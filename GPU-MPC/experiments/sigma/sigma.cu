@@ -244,5 +244,7 @@ int main(int __argc, char **__argv)
     statsFile.open(inferenceDir + "evaluator.txt");
     statsFile << ss.rdbuf();
     statsFile.close();
+
+    std::cout << ss.str();
     return 0;
 }
