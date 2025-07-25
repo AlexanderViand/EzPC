@@ -138,6 +138,11 @@ void ElemWiseSecretSharedVectorMult(int32_t size, MASK_PAIR(GroupElement *inArr)
 
 void Floor(int32_t s1, MASK_PAIR(GroupElement *inArr), MASK_PAIR(GroupElement *outArr), int32_t sf);
 
+// FSS-based sorting using compare-and-aggregate approach
+void Sort(int32_t num_elements, int32_t key_bitlength, int32_t value_bitlength,
+          MASK_PAIR(GroupElement *keys), MASK_PAIR(GroupElement *values), 
+          MASK_PAIR(GroupElement *indices), bool ascending = true, bool stable_sort = true);
+
 inline GroupElement funcSSCons(uint64_t val) {
     GroupElement g(val, 64);
     // if (party == DEALER)

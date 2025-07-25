@@ -29,6 +29,7 @@ SOFTWARE.
 #include "pubdiv.h"
 #include "dcf.h"
 #include "input_prng.h"
+#include "sort.h"
 #include <cassert>
 #include <iostream>
 #include <assert.h>
@@ -1212,4 +1213,25 @@ void ElemWiseSecretSharedVectorMult(int32_t size, MASK_PAIR(GroupElement *inArr)
 void Floor(int32_t s1, MASK_PAIR(GroupElement *inArr), MASK_PAIR(GroupElement *outArr), int32_t sf) 
 {
     assert(false && "Floor not implemented");
+}
+
+// FSS-based sorting using compare-and-aggregate approach
+void Sort(int32_t num_elements, int32_t key_bitlength, int32_t value_bitlength,
+          MASK_PAIR(GroupElement *keys), MASK_PAIR(GroupElement *values), 
+          MASK_PAIR(GroupElement *indices), bool ascending, bool stable_sort)
+{
+    std::cerr << ">> FSS Sort - start" << std::endl;
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    
+    // Call the main FSS sorting function
+    fssSort(num_elements, key_bitlength, value_bitlength, 
+            MASK_PAIR(keys), MASK_PAIR(values), MASK_PAIR(indices), 
+            ascending, stable_sort);
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    auto eval_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    
+    std::cerr << "   Sort Time: " << eval_time / 1000.0 << " milliseconds" << std::endl;
+    std::cerr << ">> FSS Sort - end" << std::endl;
 }
