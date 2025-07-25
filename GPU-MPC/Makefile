@@ -113,6 +113,9 @@ sigma: experiments/sigma/sigma.cu
 sigma_correctness: experiments/sigma/sigma.cu 
 	$(CXX) $(FLAGS) -DCORRECTNESS=1 $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o experiments/sigma/sigma
 
+test: test.cu
+	$(CXX) $(FLAGS) $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o test
+
 piranha: experiments/orca/piranha.cu 
 	$(CXX) $(FLAGS) $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o experiments/orca/piranha
 
@@ -135,4 +138,5 @@ clean:
 	rm experiments/orca/orca_inference_u32
 	rm experiments/orca/piranha
 	rm experiments/sigma/sigma
+	rm -f test
 	
