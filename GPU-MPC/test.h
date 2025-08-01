@@ -28,6 +28,7 @@
 #include "utils/gpu_random.h"
 #include "utils/gpu_comms.h"
 #include "fss/dcf/gpu_dcf.h"
+#include "fss/gpu_scmp.h"
 #include <sytorch/tensor.h>
 #include <sytorch/backend/llama_transformer.h>
 #include <llama/comms.h>
@@ -47,6 +48,7 @@ struct DCFTestConfig {
     int cpu_threads;    // Number of CPU threads
     T element1;         // First element to compare
     T element2;         // Second element to compare
+    bool run_scmp;      // Whether to run SCMP test
 };
 
 // Function to parse command line arguments similar to sigma

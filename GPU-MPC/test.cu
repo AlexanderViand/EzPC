@@ -25,11 +25,12 @@
 #include <sstream>
 
 DCFTestConfig parseTestArgs(int argc, char **argv) {
-  if (argc != 6) {
+  if (argc != 7) {
     printf("Usage: %s <model> <sequence_length> <party=0/1> <peer_ip> "
-           "<cpu_threads>\n",
+           "<cpu_threads> <run_scmp=0/1>\n",
            argv[0]);
-    printf("Example: %s dcf-test 128 0 192.168.1.100 64\n", argv[0]);
+    printf("Example: %s dcf-test 128 0 192.168.1.100 64 1\n", argv[0]);
+    printf("  run_scmp=1 to test SCMP functionality, 0 for DCF only\n");
     exit(1);
   }
 
@@ -41,6 +42,7 @@ DCFTestConfig parseTestArgs(int argc, char **argv) {
   config.party = atoi(argv[3]);
   config.peer_ip = std::string(argv[4]);
   config.cpu_threads = atoi(argv[5]);
+  config.run_scmp = (atoi(argv[6]) == 1);
 
   // Set DCF parameters based on model type
   if (model == "dcf-test" || model == "test") {
@@ -67,6 +69,7 @@ DCFTestConfig parseTestArgs(int argc, char **argv) {
   printf("  Output bit width: %d\n", config.bout);
   printf("  Element 1: %lu\n", config.element1);
   printf("  Element 2: %lu\n", config.element2);
+  printf("  Run SCMP test: %s\n", config.run_scmp ? "Yes" : "No");
 
   return config;
 }
@@ -298,6 +301,77 @@ void runDCFComparison(const DCFTestConfig &config) {
   delete dcfMPC;
 }
 
+// SCMP comparison test function
+void runSCMPComparison(DCFTestConfig config) {
+  printf("\n=== GPU SCMP Comparison Test ===\n");
+  printf("Testing secure comparison: %lu vs %lu\n", config.element1, config.element2);
+  
+  // Test parameters
+  int M = 1; // Number of comparisons
+  u64 rin1 = 12345; // Random input share 1
+  u64 rin2 = 67890; // Random input share 2  
+  u64 rout = 54321; // Random output share
+  
+  // Allocate GPU memory for results
+  u64 *d_results;
+  checkCudaErrors(cudaMalloc(&d_results, M * sizeof(u64)));
+  
+  printf("\n--- SCMP Key Generation ---\n");
+  GPUScmpKey key0, key1;
+  
+  auto start = std::chrono::high_resolution_clock::now();
+  keyGenGPUSCMP(config.bin, config.bout, rin1, rin2, rout, 
+                config.party, &key0, &key1);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  
+  printf("SCMP key generation completed in %ld microseconds\n", elapsed.count());
+  
+  printf("\n--- SCMP Evaluation ---\n");
+  GPUScmpKey *key = (config.party == 0) ? &key0 : &key1;
+  
+  start = std::chrono::high_resolution_clock::now();
+  evalGPUSCMP(config.party, d_results, config.element1, config.element2, *key, M);
+  end = std::chrono::high_resolution_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  
+  printf("SCMP evaluation completed in %ld microseconds\n", elapsed.count());
+  
+  // Copy results back to host
+  u64 *h_results = (u64*)malloc(M * sizeof(u64));
+  checkCudaErrors(cudaMemcpy(h_results, d_results, M * sizeof(u64), cudaMemcpyDeviceToHost));
+  
+  printf("\nSCMP Results:\n");
+  for (int i = 0; i < M; i++) {
+    printf("  Comparison %d: %lu\n", i, h_results[i]);
+  }
+  
+  // Expected result (for demonstration)
+  bool expected = (config.element1 < config.element2);
+  printf("\nExpected comparison result: %lu < %lu = %s\n", 
+         config.element1, config.element2, expected ? "true" : "false");
+  printf("Note: Actual secure computation result requires both parties' shares\n");
+  
+  // Save results
+  std::string outputDir = "./output/P" + std::to_string(config.party) + "/";
+  system(("mkdir -p " + outputDir).c_str());
+  std::ofstream scmpFile(outputDir + "scmp_results.txt");
+  scmpFile << "SCMP Results for Party " << config.party << std::endl;
+  scmpFile << "Key generation time: " << elapsed.count() << " us" << std::endl;
+  for (int i = 0; i < M; i++) {
+    scmpFile << "Result " << i << ": " << h_results[i] << std::endl;
+  }
+  scmpFile.close();
+  
+  // Cleanup
+  freeGPUScmpKey(key0);
+  freeGPUScmpKey(key1);
+  checkCudaErrors(cudaFree(d_results));
+  free(h_results);
+  
+  printf("SCMP test completed successfully!\n");
+}
+
 int main(int argc, char **argv) {
   // Parse command line arguments
   DCFTestConfig config = parseTestArgs(argc, argv);
@@ -308,9 +382,14 @@ int main(int argc, char **argv) {
   // Run DCF comparison
   runDCFComparison(config);
 
+  // Run SCMP test if requested
+  if (config.run_scmp) {
+    runSCMPComparison(config);
+  }
+
   // Cleanup
   cleanupTestEnvironment();
 
-  printf("\nDCF comparison test completed successfully!\n");
+  printf("\nAll tests completed successfully!\n");
   return 0;
 }
