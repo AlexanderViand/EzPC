@@ -61,4 +61,7 @@ void runDCFComparison(const DCFTestConfig& config);
 void initTestEnvironment();
 
 // Helper function to cleanup test environment  
-void cleanupTestEnvironment(); 
+void cleanupTestEnvironment();
+
+// Function to test two-iteration maximum algorithm
+void runTwoIterationMaximumTest(const DCFTestConfig& config); 

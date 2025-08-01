@@ -23,6 +23,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include "fss/gpu_compare_aggregate.h"
 
 DCFTestConfig parseTestArgs(int argc, char **argv) {
   if (argc != 7) {
@@ -399,6 +400,9 @@ int main(int argc, char **argv) {
   // Run SCMP test if requested
   if (config.run_scmp) {
     runSCMPComparison(config);
+    
+    // Run two-iteration maximum algorithm test
+    runTwoIterationMaximumTest(config);
   }
 
   // Cleanup
@@ -406,4 +410,102 @@ int main(int argc, char **argv) {
 
   printf("\nAll tests completed successfully!\n");
   return 0;
+}
+
+// Test function for two-iteration maximum algorithm
+void runTwoIterationMaximumTest(const DCFTestConfig& config) {
+  printf("\n=== Testing Two-Iteration Maximum Algorithm ===\n");
+  
+  // Initialize AES context
+  AESGlobalContext gaes;
+  initAESContext(&gaes);
+  
+  // Test parameters
+  const int TEST_SIZE = 50;  // Number of elements to test
+  const int MAX_VALUE = 1000;  // Maximum value for random elements
+  
+  // Generate random test data
+  u64 *h_elements = new u64[TEST_SIZE];
+  srand(time(NULL) + config.party);  // Different seed for each party
+  
+  u64 expectedMax = 0;
+  printf("Test data: ");
+  for (int i = 0; i < TEST_SIZE; i++) {
+    h_elements[i] = rand() % MAX_VALUE;
+    if (i < 10) printf("%lu ", h_elements[i]);  // Print first 10 elements
+    if (h_elements[i] > expectedMax) {
+      expectedMax = h_elements[i];
+    }
+  }
+  printf("...\n");
+  printf("Expected maximum (cleartext): %lu\n", expectedMax);
+  
+  // Copy data to GPU
+  u64 *d_elements = (u64*)gpuMalloc(TEST_SIZE * sizeof(u64));
+  checkCudaErrors(cudaMemcpy(d_elements, h_elements, TEST_SIZE * sizeof(u64), 
+                             cudaMemcpyHostToDevice));
+  
+  // Calculate number of SCMP keys needed
+  // For two-iteration maximum, we need keys for:
+  // 1. All comparisons within partitions (iteration 1)
+  // 2. All comparisons in the complete graph of partition maxima (iteration 2)
+  int t = std::max(1, (int)(std::pow(TEST_SIZE, 2.0/3.0) / std::pow(2, 1.0/3.0)));
+  if (t > TEST_SIZE) t = TEST_SIZE;
+  
+  // Estimate number of keys needed (conservative upper bound)
+  int numKeys = TEST_SIZE * (TEST_SIZE - 1) / 2;  // Upper bound: complete graph
+  
+  printf("\nGenerating %d SCMP keys for two-iteration maximum...\n", numKeys);
+  
+  // Generate SCMP keys
+  GPUScmpKey *keys = new GPUScmpKey[numKeys];
+  for (int i = 0; i < numKeys; i++) {
+    // Use random masks for demonstration
+    u64 rin1 = rand() % MAX_VALUE;
+    u64 rin2 = rand() % MAX_VALUE;
+    u64 rout = rand() & 1;
+    
+    GPUScmpKey tempKey0, tempKey1;
+    keyGenGPUSCMP(config.bin, config.bout, rin1, rin2, rout, 0, &tempKey0, &tempKey1, &gaes);
+    
+    // Use the appropriate key for this party
+    keys[i] = (config.party == 0) ? tempKey0 : tempKey1;
+    
+    // Free the unused key
+    if (config.party == 0) {
+      freeGPUScmpKey(tempKey1);
+    } else {
+      freeGPUScmpKey(tempKey0);
+    }
+  }
+  
+  printf("Keys generated successfully\n");
+  
+  // Run the two-iteration maximum algorithm
+  auto start = std::chrono::high_resolution_clock::now();
+  runTwoIterationMaximum(config.party, d_elements, TEST_SIZE, keys, numKeys, &gaes);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  
+  printf("\nTwo-iteration maximum completed in %ld microseconds\n", elapsed.count());
+  
+  // Save results to file
+  std::string outputDir = "./output/P" + std::to_string(config.party) + "/";
+  system(("mkdir -p " + outputDir).c_str());
+  std::ofstream maxFile(outputDir + "two_iteration_max_results.txt");
+  maxFile << "Two-Iteration Maximum Results for Party " << config.party << std::endl;
+  maxFile << "Number of elements: " << TEST_SIZE << std::endl;
+  maxFile << "Execution time: " << elapsed.count() << " us" << std::endl;
+  maxFile << "Expected maximum (cleartext): " << expectedMax << std::endl;
+  maxFile.close();
+  
+  // Cleanup
+  for (int i = 0; i < numKeys; i++) {
+    freeGPUScmpKey(keys[i]);
+  }
+  delete[] keys;
+  delete[] h_elements;
+  gpuFree(d_elements);
+  
+  printf("Two-iteration maximum test completed!\n");
 }
