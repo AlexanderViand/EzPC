@@ -304,24 +304,24 @@ void runDCFComparison(const DCFTestConfig &config) {
 // SCMP comparison test function
 void runSCMPComparison(DCFTestConfig config) {
   printf("\n=== GPU SCMP Comparison Test ===\n");
-  printf("Testing secure comparison: %lu vs %lu\n", config.element1, config.element2);
+  printf("Testing secure comparison: %lu >= %lu\n", config.element1, config.element2);
+  
+  // Initialize AES context for crypto operations
+  AESGlobalContext gaes;
+  initAESContext(&gaes);
   
   // Test parameters
   int M = 1; // Number of comparisons
-  u64 rin1 = 12345; // Random input share 1
-  u64 rin2 = 67890; // Random input share 2  
-  u64 rout = 54321; // Random output share
-  
-  // Allocate GPU memory for results
-  u64 *d_results;
-  checkCudaErrors(cudaMalloc(&d_results, M * sizeof(u64)));
+  u64 rin1 = 12345; // Random input mask 1
+  u64 rin2 = 67890; // Random input mask 2  
+  u64 rout = 1; // Random output mask (single bit for comparison)
   
   printf("\n--- SCMP Key Generation ---\n");
   GPUScmpKey key0, key1;
   
   auto start = std::chrono::high_resolution_clock::now();
   keyGenGPUSCMP(config.bin, config.bout, rin1, rin2, rout, 
-                config.party, &key0, &key1);
+                0, &key0, &key1, &gaes);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   
@@ -330,44 +330,58 @@ void runSCMPComparison(DCFTestConfig config) {
   printf("\n--- SCMP Evaluation ---\n");
   GPUScmpKey *key = (config.party == 0) ? &key0 : &key1;
   
+  // Allocate memory for results
+  u64 h_results[M];
+  
   start = std::chrono::high_resolution_clock::now();
-  evalGPUSCMP(config.party, d_results, config.element1, config.element2, *key, M);
+  evalGPUSCMP(config.party, h_results, config.element1, config.element2, *key, M, &gaes);
   end = std::chrono::high_resolution_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   
   printf("SCMP evaluation completed in %ld microseconds\n", elapsed.count());
   
-  // Copy results back to host
-  u64 *h_results = (u64*)malloc(M * sizeof(u64));
-  checkCudaErrors(cudaMemcpy(h_results, d_results, M * sizeof(u64), cudaMemcpyDeviceToHost));
-  
-  printf("\nSCMP Results:\n");
+  printf("\nSCMP Results for Party %d:\n", config.party);
   for (int i = 0; i < M; i++) {
-    printf("  Comparison %d: %lu\n", i, h_results[i]);
+    printf("  Share[%d]: %lu\n", i, h_results[i]);
   }
   
   // Expected result (for demonstration)
-  bool expected = (config.element1 < config.element2);
-  printf("\nExpected comparison result: %lu < %lu = %s\n", 
+  bool expected = (config.element1 >= config.element2);
+  printf("\nExpected comparison result: %lu >= %lu = %s\n", 
          config.element1, config.element2, expected ? "true" : "false");
-  printf("Note: Actual secure computation result requires both parties' shares\n");
+  printf("Note: To get actual result, XOR shares from both parties\n");
+  
+  printf("\n--- Testing Less-Than Comparison ---\n");
+  printf("Testing: %lu < %lu\n", config.element1, config.element2);
+  
+  // Test less-than function as well
+  u64 h_lt_results[M];
+  start = std::chrono::high_resolution_clock::now();
+  evalGPULessThan(config.party, h_lt_results, config.element1, config.element2, *key, M, &gaes);
+  end = std::chrono::high_resolution_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  
+  printf("Less-than evaluation completed in %ld microseconds\n", elapsed.count());
+  printf("Less-than share for Party %d: %lu\n", config.party, h_lt_results[0]);
+  
+  bool expected_lt = (config.element1 < config.element2);
+  printf("Expected less-than result: %lu < %lu = %s\n", 
+         config.element1, config.element2, expected_lt ? "true" : "false");
   
   // Save results
   std::string outputDir = "./output/P" + std::to_string(config.party) + "/";
   system(("mkdir -p " + outputDir).c_str());
   std::ofstream scmpFile(outputDir + "scmp_results.txt");
   scmpFile << "SCMP Results for Party " << config.party << std::endl;
+  scmpFile << "Elements: " << config.element1 << " vs " << config.element2 << std::endl;
   scmpFile << "Key generation time: " << elapsed.count() << " us" << std::endl;
-  for (int i = 0; i < M; i++) {
-    scmpFile << "Result " << i << ": " << h_results[i] << std::endl;
-  }
+  scmpFile << "SCMP (>=) share: " << h_results[0] << std::endl;
+  scmpFile << "Less-than (<) share: " << h_lt_results[0] << std::endl;
   scmpFile.close();
   
   // Cleanup
   freeGPUScmpKey(key0);
   freeGPUScmpKey(key1);
-  checkCudaErrors(cudaFree(d_results));
-  free(h_results);
   
   printf("SCMP test completed successfully!\n");
 }

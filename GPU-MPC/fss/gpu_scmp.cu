@@ -19,6 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#define GPU_SCMP_CU_COMPILATION
+#include "gpu_scmp.h"
 #include <assert.h>
 #include <cstdint>
 #include <iostream>
@@ -28,6 +30,8 @@
 #include "utils/gpu_random.h"
 #include "utils/misc_utils.h"
 #include "utils/gpu_mem.h"
+#include "dcf/gpu_dcf.h"
+#include "dcf/gpu_dcf_templates.h"
 
 // Helper function to split shares (simplified for GPU)
 __device__ __host__ void splitShare(u64 value, u64 *share0, u64 *share1) {
@@ -59,22 +63,34 @@ void keyGenGPUDualDCF(int Bin, int Bout, int N, u64 idx,
     }
     
     // Create device memory for the index
-    u64 *d_idx = (u64*)gpuMalloc(sizeof(u64));
-    checkCudaErrors(cudaMemcpy(d_idx, &idx, sizeof(u64), cudaMemcpyHostToDevice));
+    u64 *d_idx = (u64*)gpuMalloc(N * sizeof(u64));
+    // Set all N elements to idx for batched processing
+    u64 *h_idx = (u64*)malloc(N * sizeof(u64));
+    for (int i = 0; i < N; i++) {
+        h_idx[i] = idx;
+    }
+    checkCudaErrors(cudaMemcpy(d_idx, h_idx, N * sizeof(u64), cudaMemcpyHostToDevice));
     
-    // Generate DCF keys using existing gpuKeyGenDCF function
-    u8 *keyBuf0 = (u8*)malloc(N * 1024 * 1024); // Allocate buffer for keys
-    u8 *keyBuf1 = (u8*)malloc(N * 1024 * 1024); // FIXME: HARDCODED 1024^2 SEEMS WRONG, SHOULD BE RELATED TO N???
+    // Allocate reasonable key buffer size (estimate based on DCF key structure)
+    size_t keyBufSize = N * (Bin + 10) * sizeof(AESBlock) + 1024 * 1024; // Conservative estimate
+    u8 *keyBuf0 = (u8*)malloc(keyBufSize);
+    u8 *keyBuf1 = (u8*)malloc(keyBufSize);
     u8 *keyPtr0 = keyBuf0;
     u8 *keyPtr1 = keyBuf1;
     
-    // Generate keys for both parties
-    gpuKeyGenDCF(&keyPtr0, 0, Bin, N, d_idx, gaes);
-    gpuKeyGenDCF(&keyPtr1, 1, Bin, N, d_idx, gaes);
+    // Generate keys for both parties using the correct signature
+    // For now, we use payload[0] as the single payload value - this needs to be updated
+    // to support multiple payloads properly
+    dcf::gpuKeyGenDCF(&keyPtr0, 0, Bin, Bout, N, d_idx, u64(payload[0]), gaes);
+    dcf::gpuKeyGenDCF(&keyPtr1, 1, Bin, Bout, N, d_idx, u64(payload[0]), gaes);
+    
+    // Reset pointers for reading
+    keyPtr0 = keyBuf0;
+    keyPtr1 = keyBuf1;
     
     // Read the generated keys
-    key0->dcfKey = readGPUDcfKey(&keyBuf0);
-    key1->dcfKey = readGPUDcfKey(&keyBuf1);
+    key0->dcfKey = dcf::readGPUDCFKey(&keyPtr0);
+    key1->dcfKey = dcf::readGPUDCFKey(&keyPtr1);
 
     // Split payload2 shares for sb values
     for (int i = 0; i < N; i++) {
@@ -82,6 +98,7 @@ void keyGenGPUDualDCF(int Bin, int Bout, int N, u64 idx,
     }
     
     // Cleanup
+    free(h_idx);
     free(payload);
     free(keyBuf0);
     free(keyBuf1);
@@ -110,30 +127,43 @@ __global__ void evalGPUDualDCFKernel(int party, u64 *res, u32 *dcf_result,
 // GPU DualDCF evaluation
 void evalGPUDualDCF(int party, u64 *res, u64 idx, const GPUDualDCFKey &key, 
                     int M, AESGlobalContext *gaes) {
-    // Create device input for DCF evaluation (just the index for each element)
+    // Create device input for DCF evaluation
     u64 *d_idx = (u64*)gpuMalloc(M * sizeof(u64));
-    checkCudaErrors(cudaMemset(d_idx, 0, M * sizeof(u64)));
-    // Set all elements to the same index value for evaluation
-    checkCudaErrors(cudaMemcpy(d_idx, &idx, sizeof(u64), cudaMemcpyHostToDevice));
+    u64 *h_idx = (u64*)malloc(M * sizeof(u64));
+    for (int i = 0; i < M; i++) {
+        h_idx[i] = idx;
+    }
+    checkCudaErrors(cudaMemcpy(d_idx, h_idx, M * sizeof(u64), cudaMemcpyHostToDevice));
     
     // Evaluate DCF
     Stats s;
-    u32 *d_dcf_result = gpuDcf(key.dcfKey, party, d_idx, gaes, &s);
+    // Use the dcf namespace and proper template parameters
+    u32 *d_dcf_result = dcf::gpuDcf<u64, 1, dcf::idPrologue, dcf::idEpilogue>(
+        key.dcfKey, party, d_idx, gaes, &s);
     
     // Allocate device memory for shared values
     u64 *d_sb;
     checkCudaErrors(cudaMalloc(&d_sb, key.memSzSb));
     checkCudaErrors(cudaMemcpy(d_sb, key.sb, key.memSzSb, cudaMemcpyHostToDevice));
     
+    // Allocate device memory for results
+    u64 *d_res;
+    checkCudaErrors(cudaMalloc(&d_res, M * key.groupSize * sizeof(u64)));
+    
     // Launch kernel to combine DCF result with shared values
     int blockSize = 256;
     int gridSize = (M + blockSize - 1) / blockSize;
-    evalGPUDualDCFKernel<<<gridSize, blockSize>>>(party, res, d_dcf_result, d_sb, key.groupSize, M);
+    evalGPUDualDCFKernel<<<gridSize, blockSize>>>(party, d_res, d_dcf_result, d_sb, key.groupSize, M);
     checkCudaErrors(cudaDeviceSynchronize());
     
+    // Copy results back to host
+    checkCudaErrors(cudaMemcpy(res, d_res, M * key.groupSize * sizeof(u64), cudaMemcpyDeviceToHost));
+    
     // Cleanup
+    free(h_idx);
+    checkCudaErrors(cudaFree(d_res));
     checkCudaErrors(cudaFree(d_sb));
-    checkCudaErrors(cudaFree(d_idx));
+    gpuFree(d_idx);
     gpuFree(d_dcf_result);
 }
 
@@ -171,7 +201,7 @@ __global__ void evalGPUSCMPKernel(int party, u64 *res, u64 x, u64 y,
         u64 z = x - y;
         u8 z_msb = (z >> (Bin - 1)) & 1;
         u64 z_n_1 = z - ((u64)z_msb << (Bin - 1));
-        u64 z_idx = ((u64)1 << (Bin - 1)) - z_n_1 - 1;
+        // u64 z_idx = ((u64)1 << (Bin - 1)) - z_n_1 - 1; // Not used in GPU kernel
         
         // Get mb from DualDCF evaluation result
         u64 mb = mb_results[tid];
@@ -215,16 +245,62 @@ void freeGPUDualDCFKey(GPUDualDCFKey &key) {
         key.sb = nullptr;
     }
     // Free DCF key memory
-    if (key.dcfKey.bin > 7 && key.dcfKey.dpfTreeKey) {
+    if (key.dcfKey.bin > 8 && key.dcfKey.dcfTreeKey) {
         for (int b = 0; b < key.dcfKey.B; b++) {
             // The key memory is allocated as a single buffer and managed externally
             // We don't need to free individual components here
         }
-        delete[] key.dcfKey.dpfTreeKey;
-        key.dcfKey.dpfTreeKey = nullptr;
+        delete[] key.dcfKey.dcfTreeKey;
+        key.dcfKey.dcfTreeKey = nullptr;
     }
 }
 
 void freeGPUScmpKey(GPUScmpKey &key) {
     freeGPUDualDCFKey(key.dualDcfKey);
+}
+
+// GPU Integer Less-Than Comparison (x < y)
+// This is implemented as NOT(x >= y), which is NOT(SCMP(x, y))
+void keyGenGPULessThan(int Bin, int Bout, u64 rin1, u64 rin2, u64 rout,
+                       int party, GPUScmpKey *key0, GPUScmpKey *key1,
+                       AESGlobalContext *gaes) {
+    // Use SCMP key generation (which computes x >= y)
+    keyGenGPUSCMP(Bin, Bout, rin1, rin2, rout, party, key0, key1, gaes);
+}
+
+// GPU Less-Than evaluation kernel
+__global__ void evalGPULessThanKernel(int party, u64 *res, u64 *scmp_results, 
+                                      int Bout, int M) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid < M) {
+        // x < y is equivalent to NOT(x >= y)
+        // In arithmetic shares: 1 - scmp_result
+        res[tid] = ((1ULL << Bout) - 1) - scmp_results[tid];
+    }
+}
+
+// GPU Less-Than evaluation
+void evalGPULessThan(int party, u64 *res, u64 x, u64 y, const GPUScmpKey &key,
+                     int M, AESGlobalContext *gaes) {
+    // Allocate device memory for SCMP results
+    u64 *d_scmp_results = (u64*)gpuMalloc(M * sizeof(u64));
+    
+    // First evaluate SCMP (x >= y)
+    evalGPUSCMP(party, d_scmp_results, x, y, key, M, gaes);
+    
+    // Allocate device memory for final results
+    u64 *d_res = (u64*)gpuMalloc(M * sizeof(u64));
+    
+    // Launch kernel to compute NOT(SCMP) = (x < y)
+    int blockSize = 256;
+    int gridSize = (M + blockSize - 1) / blockSize;
+    evalGPULessThanKernel<<<gridSize, blockSize>>>(party, d_res, d_scmp_results, key.Bout, M);
+    checkCudaErrors(cudaDeviceSynchronize());
+    
+    // Copy results back to host
+    checkCudaErrors(cudaMemcpy(res, d_res, M * sizeof(u64), cudaMemcpyDeviceToHost));
+    
+    // Cleanup
+    gpuFree(d_scmp_results);
+    checkCudaErrors(cudaFree(d_res));
 } 

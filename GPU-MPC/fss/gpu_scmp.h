@@ -22,13 +22,14 @@
 #pragma once
 
 #include "utils/gpu_data_types.h"
-#include "gpu_dpf.h"
+#include "utils/gpu_random.h"
+#include "dcf/gpu_dcf.h"
 
 // GPU DualDCF Key structure (required for SCMP)
 struct GPUDualDCFKey
 {
     int Bin, Bout, groupSize;
-    GPUDPFKey dcfKey;
+    dcf::GPUDCFKey dcfKey;
     u64 *sb;   // shared values, size: groupSize
     u64 memSzSb;
 };
@@ -66,4 +67,15 @@ void evalGPUSCMP(int party, u64 *res, u64 x, u64 y, const GPUScmpKey &key,
 void freeGPUDualDCFKey(GPUDualDCFKey &key);
 void freeGPUScmpKey(GPUScmpKey &key);
 
-#include "gpu_scmp.cu" 
+// Integer comparison functions (x < y)
+void keyGenGPULessThan(int Bin, int Bout, u64 rin1, u64 rin2, u64 rout,
+                       int party, GPUScmpKey *key0, GPUScmpKey *key1,
+                       AESGlobalContext *gaes);
+
+void evalGPULessThan(int party, u64 *res, u64 x, u64 y, const GPUScmpKey &key,
+                     int M, AESGlobalContext *gaes);
+
+// Include implementation only when not compiling the .cu file itself
+#ifndef GPU_SCMP_CU_COMPILATION
+#include "gpu_scmp.cu"
+#endif 
