@@ -79,7 +79,7 @@ void initTestEnvironment() {
 void cleanupTestEnvironment() { destroyGPURandomness(); }
 
 // DCF Key Generation Backend (similar to SIGMAKeygen)
-template <typename T> class DCFKeygen {
+template <typename T> class TestKeygen {
 public:
   int party;
   u8 *startPtr = NULL;
@@ -87,7 +87,7 @@ public:
   size_t keySize = 0;
   AESGlobalContext g;
 
-  DCFKeygen(int party, u64 keyBufSz) : party(party) {
+  TestKeygen(int party, u64 keyBufSz) : party(party) {
     initAESContext(&g);
     u8 *ptr1, *ptr2;
     getKeyBuf(&ptr1, &ptr2, keyBufSz);
@@ -153,20 +153,34 @@ public:
 
   void runDCFComparison(int bin, int bout, int N, T *d_elements, T *h_elements,
                         T *h_threshold) {
+    // FIXME: inline this into its parent function for easier hacking
     printf("Party %d running DCF comparison over network\n", party);
 
     auto start = std::chrono::high_resolution_clock::now();
 
     // Read DCF key from buffer
+    // TODO: more magic here for mapping
     auto k = dcf::readGPUDCFKey(&keyBuf);
 
-    // Perform DCF evaluation with network communication
+    // Step 2: Perform DCF evaluation with network communication
     auto d_result = dcf::gpuDcf<T, 1, dcf::idPrologue, dcf::idEpilogue>(
         k, party, d_elements, &g, &s);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+    // TODO: local rank aggregation: rank of element i = sum j DFC of (i,j)
+    // NOTE: make sure the sum indexing matches i < j vs j > i
+
+    // TODO: REVEAL ranks (FIXME: need to shuffle elements before we call max)
+    // NOTE: look for reconstructInPlace
+
+    /// Step 3:Comparisons between each partitions local maximum
+    /// This assume we've already generated another p choose 2 keys
+    /// PROBLEM: how could we have generated them for the RIGHT masks/labels?
+    /// Step 3.1: call the DCFs
+    /// Step 3.2:local rank aggregation (same as above)
 
     printf("Time taken for P%d: %lu microseconds\n", party, elapsed.count());
     printf("Transfer time: %lu microseconds\n", s.transfer_time);
@@ -210,9 +224,20 @@ void runDCFComparison(const DCFTestConfig &config) {
   checkCudaErrors(cudaMemcpy(d_threshold, h_threshold, N * sizeof(T),
                              cudaMemcpyHostToDevice));
 
+  // For n elements split into p partitions of size k each,
+  // we need a total of p * (k choose 2) DCF keys (for the first part)
+  // We split the big buffer into the p partitions,
+  // then, inside the partitions, we just need a simple map (i,j) -> l
+  // for i < j, where l is the index of the key in the partition.
+  // NOTE: for CPU/sequential code, we want to make sure that our mapping
+  // will be accessing the keys in buffer order (avoid cache invalidation)
+  // NOTE: on GPU, we can probably do at least an entire partition,
+  // if not the entire first part in parallel b/c GPU magic
+  // However, we might still need to do some cache locality magic?
+
   // Phase 1: Key Generation (offline phase)
   printf("\n--- Phase 1: DCF Key Generation ---\n");
-  auto keygen = new DCFKeygen<T>(config.party, keyBufSz);
+  auto keygen = new TestKeygen<T>(config.party, keyBufSz);
 
   auto start = std::chrono::high_resolution_clock::now();
   keygen->generateDCFKeys(config.bin, config.bout, N, d_threshold);
