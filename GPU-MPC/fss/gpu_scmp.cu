@@ -125,7 +125,7 @@ __global__ void evalGPUDualDCFKernel(int party, u64 *res, u32 *dcf_result,
 }
 
 // GPU DualDCF evaluation
-void evalGPUDualDCF(int party, u64 *res, u64 idx, const GPUDualDCFKey &key, 
+void evalGPUDualDCF(int party, u64 *d_res, u64 idx, const GPUDualDCFKey &key, 
                     int M, AESGlobalContext *gaes) {
     // Create device input for DCF evaluation
     u64 *d_idx = (u64*)gpuMalloc(M * sizeof(u64));
@@ -143,12 +143,14 @@ void evalGPUDualDCF(int party, u64 *res, u64 idx, const GPUDualDCFKey &key,
     
     // Allocate device memory for shared values
     u64 *d_sb;
+    // Debug: Check if key.sb is valid and memSzSb is reasonable
+    if (key.sb == nullptr || key.memSzSb == 0) {
+        printf("ERROR: Invalid key.sb pointer or memSzSb. sb=%p, memSzSb=%lu, groupSize=%d\n", 
+               key.sb, key.memSzSb, key.groupSize);
+        return;
+    }
     checkCudaErrors(cudaMalloc(&d_sb, key.memSzSb));
     checkCudaErrors(cudaMemcpy(d_sb, key.sb, key.memSzSb, cudaMemcpyHostToDevice));
-    
-    // Allocate device memory for results
-    u64 *d_res;
-    checkCudaErrors(cudaMalloc(&d_res, M * key.groupSize * sizeof(u64)));
     
     // Launch kernel to combine DCF result with shared values
     int blockSize = 256;
@@ -156,12 +158,8 @@ void evalGPUDualDCF(int party, u64 *res, u64 idx, const GPUDualDCFKey &key,
     evalGPUDualDCFKernel<<<gridSize, blockSize>>>(party, d_res, d_dcf_result, d_sb, key.groupSize, M);
     checkCudaErrors(cudaDeviceSynchronize());
     
-    // Copy results back to host
-    checkCudaErrors(cudaMemcpy(res, d_res, M * key.groupSize * sizeof(u64), cudaMemcpyDeviceToHost));
-    
     // Cleanup
     free(h_idx);
-    checkCudaErrors(cudaFree(d_res));
     checkCudaErrors(cudaFree(d_sb));
     gpuFree(d_idx);
     gpuFree(d_dcf_result);

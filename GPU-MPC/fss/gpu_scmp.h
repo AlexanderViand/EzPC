@@ -52,7 +52,7 @@ void keyGenGPUDualDCF(int Bin, int Bout, u64 idx, u64 payload1, u64 payload2,
                       int party, GPUDualDCFKey *key0, GPUDualDCFKey *key1,
                       AESGlobalContext *gaes);
 
-void evalGPUDualDCF(int party, u64 *res, u64 idx, const GPUDualDCFKey &key, 
+void evalGPUDualDCF(int party, u64 *d_res, u64 idx, const GPUDualDCFKey &key, 
                     int M, AESGlobalContext *gaes);
 
 // Function declarations for SCMP operations
