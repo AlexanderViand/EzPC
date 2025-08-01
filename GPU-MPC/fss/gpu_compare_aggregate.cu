@@ -23,9 +23,9 @@ __global__ void computeLocalRanksKernel(u64 *localRanks, u32 *comparisonResults,
         
         // If element i >= element j, increment rank of i
         if (cmp == 1) {
-            atomicAdd(&localRanks[i], 1);
+            atomicAdd((unsigned long long*)&localRanks[i], 1ULL);
         } else {
-            atomicAdd(&localRanks[j], 1);
+            atomicAdd((unsigned long long*)&localRanks[j], 1ULL);
         }
     }
 }
