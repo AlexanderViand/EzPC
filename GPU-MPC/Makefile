@@ -17,6 +17,13 @@ UTIL_FILES := ./utils/gpu_mem.cu ./utils/gpu_file_utils.cpp ./utils/sigma_comms.
 OBJ_INCLUDES := -I '$(CUTLASS_PATH)/include' -I '$(CUTLASS_PATH)/tools/util/include' -I '$(SYTORCH_PATH)/include' -I '$(LLAMA_PATH)/include' -I '$(SYTORCH_PATH)/ext/cryptoTools' -I '.'
 INCLUDES := $(OBJ_INCLUDES) -L$(CUTLASS_PATH)/build/tools/library -L$(SYTORCH_BUILD_PATH) -L$(SYTORCH_BUILD_PATH)/ext/cryptoTools -L$(SYTORCH_BUILD_PATH)/ext/llama -L$(SYTORCH_BUILD_PATH)/ext/bitpack -L$(SYTORCH_BUILD_PATH)/lib
 
+# Common header files that many targets depend on
+COMMON_HEADERS := utils/gpu_data_types.h \
+	utils/gpu_random.h \
+	utils/gpu_mem.h \
+	utils/gpu_comms.h \
+	utils/gpu_file_utils.h
+
 dpf: tests/fss/dpf.cu
 	$(CXX) $(FLAGS) $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o tests/fss/dpf
 
@@ -71,8 +78,17 @@ orca_dealer: experiments/orca/orca_dealer.cu
 orca_evaluator: experiments/orca/orca_evaluator.cu experiments/orca/datasets/mnist.cpp
 	$(CXX) $(FLAGS) $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) $(SECFLOAT_LIBS) -o experiments/orca/orca_evaluator
 
-dcf: tests/fss/dcf/dcf.cu
-	$(CXX) $(FLAGS) $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o tests/fss/dcf/dcf
+# Define header dependencies for dcf
+DCF_DEPS = tests/fss/dcf/dcf.cu \
+	fss/dcf/gpu_dcf.h \
+	fss/dcf/gpu_dcf.cu \
+	utils/gpu_data_types.h \
+	utils/gpu_random.h \
+	utils/gpu_mem.h \
+	utils/gpu_comms.h
+
+dcf: $(DCF_DEPS)
+	$(CXX) $(FLAGS) $(INCLUDES) tests/fss/dcf/dcf.cu $(UTIL_FILES) $(LIBS) -o tests/fss/dcf/dcf
 
 aes: tests/fss/dcf/aes.cu
 	$(CXX) $(FLAGS) $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o tests/fss/dcf/aes
@@ -113,8 +129,19 @@ sigma: experiments/sigma/sigma.cu
 sigma_correctness: experiments/sigma/sigma.cu 
 	$(CXX) $(FLAGS) -DCORRECTNESS=1 $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o experiments/sigma/sigma
 
-test: test.cu
-	$(CXX) $(FLAGS) $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o test
+# Define header dependencies for test
+TEST_DEPS = test.cu \
+	fss/gpu_scmp.h \
+	fss/gpu_scmp.cu \
+	fss/gpu_compare_aggregate.h \
+	fss/gpu_compare_aggregate.cu \
+	fss/dcf/gpu_dcf.h \
+	fss/dcf/gpu_dcf.cu \
+	$(COMMON_HEADERS) \
+	$(UTIL_FILES)
+
+test: $(TEST_DEPS)
+	$(CXX) $(FLAGS) $(INCLUDES) test.cu $(UTIL_FILES) $(LIBS) -o test
 
 piranha: experiments/orca/piranha.cu 
 	$(CXX) $(FLAGS) $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o experiments/orca/piranha
@@ -126,6 +153,8 @@ model_accuracy: experiments/orca/model_accuracy.cu experiments/orca/datasets/mni
 	$(CXX) $(FLAGS) $(INCLUDES) $^ $(UTIL_FILES) $(LIBS) -o experiments/orca/model_accuracy
 
 orca: orca_dealer orca_evaluator orca_inference orca_inference_u32 piranha
+
+.PHONY: clean orca
 
 clean:
 	rm -rf ext/cutlass/build
