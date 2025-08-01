@@ -27,32 +27,104 @@
 #include "fss/gpu_softmax.h"
 #include "fss/gpu_matmul.h"
 
+/**
+ * @brief Parameters for Multi-Head Attention (MHA) operations
+ * 
+ * This structure defines the configuration for secure multi-head attention
+ * computation, a key component of transformer models.
+ */
 struct MHAParams
 {
-    int n_seq, n_embed, n_heads, dim_W;
-    bool selfAttn, doNormQKt, rotEmb;
+    int n_seq;      ///< Sequence length (number of tokens)
+    int n_embed;    ///< Embedding dimension
+    int n_heads;    ///< Number of attention heads
+    int dim_W;      ///< Dimension per head (typically n_embed / n_heads)
+    
+    bool selfAttn;   ///< True for self-attention (uses causal mask)
+    bool doNormQKt;  ///< True to normalize Q*K^T by sqrt(dim_W)
+    bool rotEmb;     ///< True to apply rotary position embeddings
 };
 
+/**
+ * @brief Collection of matrix multiplication parameters for MHA
+ * 
+ * This structure groups all the matrix multiplication configurations
+ * needed for the different stages of multi-head attention.
+ */
 struct MHAMulParams
 {
-    MatmulParams pQKV, pQKt, pSmQKtV, pProj;
-    MaxpoolParams pMPool;
+    MatmulParams pQKV;      ///< Parameters for Q, K, V projection
+    MatmulParams pQKt;      ///< Parameters for Q * K^T computation
+    MatmulParams pSmQKtV;   ///< Parameters for softmax(Q*K^T) * V
+    MatmulParams pProj;     ///< Parameters for output projection
+    MaxpoolParams pMPool;   ///< Parameters for maxpool in softmax
 };
 
+/**
+ * @brief FSS key structure for GPU Multi-Head Attention
+ * 
+ * @tparam T Data type for the computation (e.g., u32, u64)
+ * 
+ * This structure contains all FSS keys needed for secure MHA:
+ * 1. Matrix multiplication keys for Q/K/V projections
+ * 2. Softmax key for attention weights
+ * 3. Truncation keys for normalization and rotary embeddings
+ * 
+ * The MHA computation flow:
+ * 1. Project input to Q, K, V using mmKeyQKV
+ * 2. Apply rotary embeddings if enabled (reQTrKey, reKTrKey)
+ * 3. Compute attention scores Q * K^T using mmKeyQKt
+ * 4. Normalize scores if enabled (normQKtTrKey)
+ * 5. Apply softmax using softmaxKey
+ * 6. Compute attention output using mmKeySmQKtV
+ * 7. Project back to original dimension using mmKeyProj
+ */
 template <typename T>
 struct GPUMHAKey
 {
-    GPUMatmulKey<T> mmKeyQKV, mmKeyQKt, mmKeySmQKtV, mmKeyProj;
-    GPUSoftMaxKey<T> softmaxKey;
-    GPUTruncateKey<T> reQTrKey, reKTrKey, normQKtTrKey;
+    GPUMatmulKey<T> mmKeyQKV;       ///< Key for Q, K, V projections
+    GPUMatmulKey<T> mmKeyQKt;       ///< Key for Q * K^T attention scores
+    GPUMatmulKey<T> mmKeySmQKtV;    ///< Key for attention * V
+    GPUMatmulKey<T> mmKeyProj;      ///< Key for output projection
+    
+    GPUSoftMaxKey<T> softmaxKey;    ///< Key for softmax over attention scores
+    
+    GPUTruncateKey<T> reQTrKey;     ///< Key for rotary embedding on Q
+    GPUTruncateKey<T> reKTrKey;     ///< Key for rotary embedding on K
+    GPUTruncateKey<T> normQKtTrKey; ///< Key for normalizing attention scores
 };
 
+/**
+ * @brief Lookup tables for MHA non-linear operations
+ * 
+ * @tparam T Data type for the computation
+ * 
+ * This structure contains precomputed lookup tables for efficient
+ * evaluation of non-linear functions in multi-head attention.
+ */
 template <typename T>
 struct MHATables
 {
-    T *d_nExpMsbTab = NULL, *d_nExpLsbTab = NULL, *d_invTab = NULL;
+    T *d_nExpMsbTab = NULL;  ///< LUT for negative exponential MSB part
+    T *d_nExpLsbTab = NULL;  ///< LUT for negative exponential LSB part
+    T *d_invTab = NULL;      ///< LUT for inverse operation (1/x)
 };
 
+/**
+ * @brief Initialize lookup tables for MHA operations
+ * 
+ * @tparam T Data type for the computation
+ * @param n_seq Sequence length
+ * @param scale Scale factor for fixed-point arithmetic
+ * @return MHATables<T> Initialized lookup tables
+ * 
+ * This function generates lookup tables for:
+ * 1. Negative exponential (split into MSB and LSB for accuracy)
+ * 2. Inverse function for softmax normalization
+ * 
+ * The table sizes and precisions are optimized for the given
+ * sequence length and scale factor.
+ */
 template <typename T>
 inline MHATables<T> initMHATables(int n_seq, int scale)
 {
@@ -161,6 +233,30 @@ MHAMulParams initMHAMulParams(MHAParams pMHA, int bw, int scale) {
     return pMHAMul;
 }
 
+/**
+ * @brief Read a GPU Multi-Head Attention key from a byte stream
+ * 
+ * @tparam T Data type for the computation
+ * @param pMHA MHA parameters defining the attention configuration
+ * @param pMHAMul Matrix multiplication parameters for MHA stages
+ * @param key_as_bytes Pointer to byte stream containing the serialized key
+ * @return GPUMHAKey<T> Deserialized MHA key
+ * 
+ * This function deserializes a complete MHA key from a byte stream,
+ * extracting all component keys in the correct order:
+ * 
+ * 1. Q/K/V projection keys
+ * 2. Rotary embedding truncation keys (if enabled)
+ * 3. Attention score computation key
+ * 4. Normalization key (if needed based on dim_W)
+ * 5. Softmax key for attention weights
+ * 6. Attention output computation key
+ * 7. Output projection key
+ * 
+ * The truncation types are chosen to maintain numerical stability:
+ * - TrFloor for matrix multiplications
+ * - TrWithSlack for rotary embeddings to preserve precision
+ */
 template <typename T>
 GPUMHAKey<T> readGPUMHAKey(MHAParams pMHA, MHAMulParams pMHAMul, u8 **key_as_bytes)
 {

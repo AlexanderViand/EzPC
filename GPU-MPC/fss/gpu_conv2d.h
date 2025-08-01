@@ -21,23 +21,77 @@
 
 #pragma once
 
+/**
+ * @brief Parameters for 2D convolution operations on GPU
+ * 
+ * This structure defines all necessary parameters for performing secure
+ * 2D convolution operations using Function Secret Sharing (FSS).
+ */
 struct Conv2DParams
 {
-    int bin, bout, N, H, W, CI, FH, FW, CO,
-        zPadHLeft, zPadHRight,
-        zPadWLeft, zPadWRight,
-        strideH, strideW, OH, OW;
-    size_t size_I, size_F, size_O;
+    int bin;   ///< Input bit width
+    int bout;  ///< Output bit width
+    int N;     ///< Batch size (number of images)
+    int H;     ///< Height of input images
+    int W;     ///< Width of input images
+    int CI;    ///< Number of input channels
+    int FH;    ///< Filter height (kernel height)
+    int FW;    ///< Filter width (kernel width)
+    int CO;    ///< Number of output channels
+    
+    int zPadHLeft;   ///< Zero padding on left side (height dimension)
+    int zPadHRight;  ///< Zero padding on right side (height dimension)
+    int zPadWLeft;   ///< Zero padding on left side (width dimension)
+    int zPadWRight;  ///< Zero padding on right side (width dimension)
+    
+    int strideH;  ///< Stride in height dimension
+    int strideW;  ///< Stride in width dimension
+    int OH;       ///< Output height (computed by fillConv2DParams)
+    int OW;       ///< Output width (computed by fillConv2DParams)
+    
+    size_t size_I;  ///< Total number of elements in input tensor
+    size_t size_F;  ///< Total number of elements in filter tensor
+    size_t size_O;  ///< Total number of elements in output tensor
 };
 
+/**
+ * @brief FSS key structure for GPU 2D convolution
+ * 
+ * @tparam T Data type for the computation (e.g., u32, u64)
+ * 
+ * This structure contains the secret-shared tensors needed for secure
+ * convolution computation. The tensors are laid out in NHWC format
+ * (batch, height, width, channels) for optimal GPU performance.
+ */
 template <typename T>
 struct GPUConv2DKey
 {
-    Conv2DParams p;
-    size_t mem_size_I, mem_size_F, mem_size_O;
-    T *I, *F, *O;
+    Conv2DParams p;  ///< Convolution parameters
+    
+    size_t mem_size_I;  ///< Memory size in bytes for input tensor
+    size_t mem_size_F;  ///< Memory size in bytes for filter tensor
+    size_t mem_size_O;  ///< Memory size in bytes for output tensor
+    
+    T *I;  ///< Secret share of input tensor (NHWC format)
+    T *F;  ///< Secret share of filter/kernel tensor
+    T *O;  ///< Secret share of output tensor (used for masking)
 };
 
+/**
+ * @brief Initialize convolution parameters with computed output dimensions
+ * 
+ * @param p Pointer to Conv2DParams structure to initialize
+ * 
+ * This function computes the output dimensions (OH, OW) and tensor sizes
+ * based on the input parameters, padding, and stride settings.
+ * 
+ * @note Must be called after setting all input parameters but before
+ * using the Conv2DParams structure for convolution operations.
+ * 
+ * Output dimensions are computed as:
+ * - OH = ((H - FH + (zPadHLeft + zPadHRight)) / strideH) + 1
+ * - OW = ((W - FW + (zPadWLeft + zPadWRight)) / strideW) + 1
+ */
 void fillConv2DParams(Conv2DParams *p)
 {
     p->OH = ((p->H - p->FH + (p->zPadHLeft + p->zPadHRight)) / p->strideH) + 1;

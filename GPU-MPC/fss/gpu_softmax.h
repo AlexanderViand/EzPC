@@ -27,16 +27,46 @@
 #include "gpu_inverse.h"
 #include "gpu_window.h"
 
-
+/**
+ * @brief FSS key structure for GPU softmax operation
+ * 
+ * @tparam T Data type for the computation (e.g., u32, u64)
+ * 
+ * Softmax is computed as: softmax(x_i) = exp(x_i - max(x)) / sum(exp(x_j - max(x)))
+ * This structure contains all the FSS keys needed for the secure computation:
+ * 1. Maxpool to find the maximum value
+ * 2. Negative exponential to compute exp(x_i - max)
+ * 3. Inverse to compute 1/sum
+ * 4. Window multiplication for the final normalization
+ */
 template <typename T>
 struct GPUSoftMaxKey
 {
-    GPUMaxpoolKey<T> maxPoolKey;
-    GPUNExpKey<T> nExpKey;
-    GPULUTInverseKey<T> invKey;
-    GPUMulKey<T> wMulKey;
+    GPUMaxpoolKey<T> maxPoolKey;    ///< Key for finding maximum value across the window
+    GPUNExpKey<T> nExpKey;          ///< Key for computing negative exponential
+    GPULUTInverseKey<T> invKey;     ///< Key for computing secure division (1/sum)
+    GPUMulKey<T> wMulKey;           ///< Key for window-based multiplication
 };
 
+/**
+ * @brief Read a GPU softmax key from a byte stream
+ * 
+ * @tparam T Data type for the computation
+ * @param p Maxpool parameters that define the softmax window dimensions
+ * @param key_as_bytes Pointer to byte stream containing the serialized key
+ * @return GPUSoftMaxKey<T> Deserialized softmax key
+ * 
+ * This function deserializes a softmax key from a byte stream, extracting
+ * all the component keys needed for secure softmax computation.
+ * 
+ * @note Requires p.C == 1 (single channel)
+ * @note Requires p.strideH == 1 (no vertical stride)
+ * @note Requires p.strideW == p.FW (non-overlapping windows)
+ * 
+ * The softmax operation is performed over windows defined by the maxpool
+ * parameters, typically used in attention mechanisms where softmax is
+ * applied over sequence positions.
+ */
 template <typename T>
 GPUSoftMaxKey<T> readGPUSoftMaxKey(MaxpoolParams p, u8 **key_as_bytes)
 {

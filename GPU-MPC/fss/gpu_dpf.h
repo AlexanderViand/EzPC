@@ -27,24 +27,59 @@
 
 // using u32 = u32;
 
+/**
+ * @brief GPU Distributed Point Function (DPF) tree key structure
+ * 
+ * This structure contains the keys needed for evaluating a DPF using
+ * a tree-based construction. DPF allows two parties to secret-share
+ * a point function that evaluates to 1 at a single point and 0 everywhere else.
+ */
 struct GPUDPFTreeKey
 {
-    int bin, N, evalAll;
-    AESBlock *scw;
-    AESBlock *l0, *l1;
-    u32 *tR;
-    u64 szScw, memSzScw, memSzL, memSzT, memSzOut;
+    int bin;      ///< Input bit width (domain is 2^bin)
+    int N;        ///< Number of DPF evaluations
+    int evalAll;  ///< If true, evaluate on all domain points; otherwise selective
+    
+    AESBlock *scw;  ///< Seed correction words for tree traversal
+    AESBlock *l0;   ///< Left child seeds
+    AESBlock *l1;   ///< Right child seeds
+    u32 *tR;        ///< Right child control bits
+    
+    u64 szScw;      ///< Number of seed correction words
+    u64 memSzScw;   ///< Memory size for seed correction words
+    u64 memSzL;     ///< Memory size for child seeds (each)
+    u64 memSzT;     ///< Memory size for control bits
+    u64 memSzOut;   ///< Memory size for output
 };
 
+/**
+ * @brief Main GPU DPF key structure
+ * 
+ * This structure encapsulates either a tree-based DPF key (for large domains)
+ * or a table-based key (for small domains where bin <= 7).
+ */
 struct GPUDPFKey
 {
     // if bin <= 7, populate ss, else ss = NULL
-    int bin, M, B;
-    u64 memSzOut;
-    GPUDPFTreeKey *dpfTreeKey;
-    GPUSSTabKey ssKey;
+    int bin;  ///< Input bit width
+    int M;    ///< Number of DPF evaluations
+    int B;    ///< Number of batches
+    
+    u64 memSzOut;  ///< Total memory size for output
+    
+    GPUDPFTreeKey *dpfTreeKey;  ///< Tree-based keys (if bin > 7)
+    GPUSSTabKey ssKey;          ///< Table-based key (if bin <= 7)
 };
 
+/**
+ * @brief Read a GPU DPF tree key from a byte stream
+ * 
+ * @param key_as_bytes Pointer to byte stream containing the serialized key
+ * @return GPUDPFTreeKey Deserialized DPF tree key
+ * 
+ * This function deserializes a DPF tree key, extracting all the correction
+ * words and control bits needed for tree-based DPF evaluation.
+ */
 GPUDPFTreeKey readGPUDPFTreeKey(u8 **key_as_bytes)
 {
     GPUDPFTreeKey k;
@@ -73,6 +108,19 @@ GPUDPFTreeKey readGPUDPFTreeKey(u8 **key_as_bytes)
     return k;
 }
 
+/**
+ * @brief Read a GPU DPF key from a byte stream
+ * 
+ * @param key_as_bytes Pointer to byte stream containing the serialized key
+ * @return GPUDPFKey Deserialized DPF key
+ * 
+ * This function deserializes a DPF key, automatically choosing between
+ * table-based (for small domains) and tree-based (for large domains)
+ * representations based on the input bit width.
+ * 
+ * @note For bin <= 7, uses efficient table-based implementation
+ * @note For bin > 7, uses tree-based construction with AES-based PRG
+ */
 GPUDPFKey readGPUDPFKey(u8 **key_as_bytes)
 {
     GPUDPFKey k;
@@ -100,6 +148,12 @@ GPUDPFKey readGPUDPFKey(u8 **key_as_bytes)
     return k;
 }
 
+/**
+ * @brief Alias for reading DCF keys (DCF uses same structure as DPF)
+ * 
+ * Distributed Comparison Function (DCF) keys use the same underlying
+ * structure as DPF keys, as DCF is built on top of DPF.
+ */
 const auto readGPUDcfKey = readGPUDPFKey;
 
 #include "gpu_dpf.cu"
