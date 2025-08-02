@@ -21,14 +21,14 @@
 
 #pragma once
 
-#include "utils/gpu_data_types.h"
-#include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_mem.h"
-#include "utils/gpu_random.h"
-#include "utils/gpu_comms.h"
-#include "fss/dcf/gpu_dcf.h"
-#include "fss/gpu_scmp.h"
+#include "../utils/gpu_data_types.h"
+#include "../utils/gpu_file_utils.h"
+#include "../utils/misc_utils.h"
+#include "../utils/gpu_mem.h"
+#include "../utils/gpu_random.h"
+#include "../utils/gpu_comms.h"
+#include "../fss/dcf/gpu_dcf.h"
+#include "../fss/gpu_scmp.h"
 #include <sytorch/tensor.h>
 #include <sytorch/backend/llama_transformer.h>
 #include <llama/comms.h>
@@ -39,8 +39,8 @@
 
 using T = u64;
 
-// DCF comparison test configuration
-struct DCFTestConfig {
+// MPC benchmark configuration
+struct BenchmarkConfig {
     int bin;            // Input bit width
     int bout;           // Output bit width  
     int party;          // Party number (0/1)
@@ -51,11 +51,11 @@ struct DCFTestConfig {
     bool run_scmp;      // Whether to run SCMP test
 };
 
-// Function to parse command line arguments similar to sigma
-DCFTestConfig parseTestArgs(int argc, char **argv);
+// Function to parse command line arguments
+BenchmarkConfig parseBenchmarkArgs(int argc, char **argv);
 
 // Function to run DCF-based comparison between two elements
-void runDCFComparison(const DCFTestConfig& config);
+void runDCFComparison(const BenchmarkConfig& config);
 
 // Helper function to initialize test environment
 void initTestEnvironment();
@@ -64,4 +64,33 @@ void initTestEnvironment();
 void cleanupTestEnvironment();
 
 // Function to test two-iteration maximum algorithm
-void runTwoIterationMaximumTest(const DCFTestConfig& config); 
+void runTwoIterationMaximumTest(const BenchmarkConfig& config);
+
+// Simple share reconstruction utilities
+template<typename T>
+inline bool reconstructBoolean(T share0, T share1) {
+    return (share0 ^ share1) & 1;
+}
+
+template<typename T>
+inline T reconstructArithmetic(T share0, T share1) {
+    return share0 + share1;
+}
+
+// Verify boolean comparison result
+template<typename T>
+inline bool verifyBooleanResult(T share0, T share1, bool expected, const char* test_name = nullptr) {
+    bool result = reconstructBoolean(share0, share1);
+    bool passed = (result == expected);
+    
+    if (!passed && test_name) {
+        printf("VERIFICATION FAILED for %s: expected %s, got %s\n", 
+               test_name, expected ? "true" : "false", result ? "true" : "false");
+    }
+    
+    return passed;
+}
+
+// Simple JSON output
+void writeJSONResult(const char* test_name, const BenchmarkConfig& config, 
+                    const Stats& stats, bool passed); 

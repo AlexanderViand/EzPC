@@ -54,13 +54,13 @@ setup: |
         ..
   
   echo "Starting parallel build (using $(nproc) cores)..."
-  time cmake --build . --parallel --target test
+  time cmake --build . --parallel --target mpc_benchmark
   
   echo "Build complete! Copying executable..."
-  cp test ../test
+  cp benchmarks/mpc_benchmark ../mpc_benchmark
   
   echo "=== Build Summary ==="
-  ls -la ../test
+  ls -la ../mpc_benchmark
   echo "Ready for MPC protocols!"
   
   echo "=== Setup Complete ==="
@@ -72,8 +72,8 @@ run: |
   if [ "${NODES:-2}" = "1" ]; then
     echo "=== Development Mode ==="
     echo "SSH in and run:"
-    echo "  ./test 0 &        # Server"
-    echo "  ./test 1 localhost # Client"
+    echo "  ./mpc_benchmark 0 &        # Server"
+    echo "  ./mpc_benchmark 1 localhost # Client"
     sleep infinity
   fi
   
@@ -82,8 +82,8 @@ run: |
     echo "=== Rebuild Mode ==="
     echo "Rebuilding on all nodes..."
     cd build
-    cmake --build . --parallel --target test
-    cp test ../
+    cmake --build . --parallel --target mpc_benchmark
+    cp benchmarks/mpc_benchmark ../
     echo "Rebuild complete!"
     exit 0
   fi
@@ -103,11 +103,11 @@ run: |
     case $TEST in
       scmp) 
         echo "Running SCMP test..."
-        ./test $MODEL $SEQ_LEN 0 0.0.0.0 $CPU_THREADS 1
+        ./mpc_benchmark $MODEL $SEQ_LEN 0 0.0.0.0 $CPU_THREADS 1
         ;;
       basic|dcf) 
         echo "Running DCF test..."
-        ./test $MODEL $SEQ_LEN 0 0.0.0.0 $CPU_THREADS 0
+        ./mpc_benchmark $MODEL $SEQ_LEN 0 0.0.0.0 $CPU_THREADS 0
         ;;
       *) 
         echo "Unknown test: $TEST (available: basic, dcf, scmp)"
@@ -123,11 +123,11 @@ run: |
     case $TEST in
       scmp)
         echo "Running SCMP test as client..."
-        ./test $MODEL $SEQ_LEN 1 $HEAD_IP $CPU_THREADS 1
+        ./mpc_benchmark $MODEL $SEQ_LEN 1 $HEAD_IP $CPU_THREADS 1
         ;;
       basic|dcf)
         echo "Running DCF test as client..."
-        ./test $MODEL $SEQ_LEN 1 $HEAD_IP $CPU_THREADS 0
+        ./mpc_benchmark $MODEL $SEQ_LEN 1 $HEAD_IP $CPU_THREADS 0
         ;;
       *)
         echo "Unknown test: $TEST (available: basic, dcf, scmp)"

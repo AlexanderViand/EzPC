@@ -18,14 +18,14 @@
 // ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include "test.h"
+#include "mpc_benchmark.h"
 #include <cassert>
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include "fss/gpu_compare_aggregate.h"
+#include "../fss/gpu_compare_aggregate.h"
 
-DCFTestConfig parseTestArgs(int argc, char **argv) {
+BenchmarkConfig parseBenchmarkArgs(int argc, char **argv) {
   if (argc != 7) {
     printf("Usage: %s <model> <sequence_length> <party=0/1> <peer_ip> "
            "<cpu_threads> <run_scmp=0/1>\n",
@@ -35,7 +35,7 @@ DCFTestConfig parseTestArgs(int argc, char **argv) {
     exit(1);
   }
 
-  DCFTestConfig config;
+  BenchmarkConfig config;
   std::string model(argv[1]);
 
   // Parse arguments similar to sigma
@@ -192,11 +192,15 @@ public:
     // Get results
     auto h_result = (u32 *)moveToCPU((u8 *)d_result, k.memSzOut, NULL);
 
-    printf("Party %d comparison results:\n", party);
+    printf("\n=== DCF Comparison Results (Party %d) ===\n", party);
     for (int i = 0; i < N; i++) {
       auto result_bit = (h_result[i / 32] >> (i & 31)) & T(1);
-      printf("  Element %d (%lu) < %lu: P%d_share = %u\n", i, h_elements[i],
-             h_threshold[i], party, result_bit);
+      bool expected = (h_elements[i] < h_threshold[i]);
+      
+      printf("Test %d: %lu < %lu\n", i, h_elements[i], h_threshold[i]);
+      printf("  Expected: %s\n", expected ? "true" : "false");
+      printf("  P%d share: %u\n", party, result_bit);
+      printf("  Note: Need P%d share to reconstruct actual result (XOR shares)\n", 1-party);
     }
 
     gpuFree(d_result);
@@ -209,9 +213,16 @@ public:
   }
 };
 
-void runDCFComparison(const DCFTestConfig &config) {
-  printf("\n=== Running Real Network MPC DCF Comparison: %lu vs %lu ===\n",
-         config.element1, config.element2);
+void runDCFComparison(const BenchmarkConfig &config) {
+  printf("\n=== GPU-MPC DCF Benchmark ===\n");
+  printf("Configuration:\n");
+  printf("  Protocol: DCF (Distributed Comparison Function)\n");
+  printf("  Comparing: %lu < %lu\n", config.element1, config.element2);
+  printf("  Party: %d\n", config.party);
+  printf("  Peer IP: %s\n", config.peer_ip.c_str());
+  printf("  CPU threads: %d\n", config.cpu_threads);
+  printf("  Input bitwidth: %d\n", config.bin);
+  printf("  Output bitwidth: %d\n", config.bout);
 
   const int N = 2;                // We're comparing 2 elements
   const u64 keyBufSz = 1 * OneGB; // 1GB should be enough for simple DCF
@@ -250,10 +261,14 @@ void runDCFComparison(const DCFTestConfig &config) {
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
   keygen->close();
+  
+  auto keygen_time_us = elapsed.count();
+  printf("Key generation completed in %.3f ms\n", keygen_time_us / 1000.0);
+  printf("Key size: %.2f MB\n", keygen->keySize / (1024.0 * 1024.0));
 
   // Save key generation stats
   std::stringstream ss;
-  ss << "Key generation time=" << elapsed.count() << " us" << std::endl;
+  ss << "Key generation time=" << keygen_time_us << " us" << std::endl;
   ss << "Key size=" << keygen->keySize << " bytes" << std::endl;
 
   std::string outputDir = "./output/P" + std::to_string(config.party) + "/";
@@ -275,11 +290,12 @@ void runDCFComparison(const DCFTestConfig &config) {
                            h_threshold);
   end = std::chrono::high_resolution_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  auto mpc_time_us = elapsed.count();
 
   // Save MPC stats
   ss.str("");
   ss.clear();
-  ss << "MPC time=" << elapsed.count() << " us" << std::endl;
+  ss << "MPC time=" << mpc_time_us << " us" << std::endl;
   ss << "Communication time=" << dcfMPC->s.comm_time << " us" << std::endl;
   ss << "Transfer time=" << dcfMPC->s.transfer_time << " us" << std::endl;
 
@@ -289,11 +305,28 @@ void runDCFComparison(const DCFTestConfig &config) {
 
   dcfMPC->close();
 
+  // Performance summary
+  printf("\n=== Performance Summary ===\n");
+  printf("Phase 1 (Key Generation):\n");
+  printf("  Time: %.3f ms\n", keygen_time_us / 1000.0);
+  printf("  Key size: %.2f MB\n", keygen->keySize / (1024.0 * 1024.0));
+  
+  printf("\nPhase 2 (Online MPC):\n");
+  printf("  Computation: %.3f ms\n", mpc_time_us / 1000.0);
+  printf("  Communication: %.3f ms\n", dcfMPC->s.comm_time / 1000.0);
+  printf("  Transfer: %.3f ms\n", dcfMPC->s.transfer_time / 1000.0);
+  
+  double total_ms = (keygen_time_us + mpc_time_us) / 1000.0;
+  printf("\nTotal time: %.3f ms\n", total_ms);
+  
+  // Write JSON results
+  writeJSONResult("dcf_comparison", config, dcfMPC->s, true);
+  
   printf("\nExpected result: %lu < %lu = %s\n", config.element1,
          config.element2,
          (config.element1 < config.element2) ? "true" : "false");
 
-  printf("Results saved to %s\n", outputDir.c_str());
+  printf("\nResults saved to %s\n", outputDir.c_str());
 
   // Cleanup
   gpuFree(d_elements);
@@ -303,7 +336,7 @@ void runDCFComparison(const DCFTestConfig &config) {
 }
 
 // SCMP comparison test function
-void runSCMPComparison(DCFTestConfig config) {
+void runSCMPComparison(BenchmarkConfig config) {
   printf("\n=== GPU SCMP Comparison Test ===\n");
   printf("Testing secure comparison: %lu >= %lu\n", config.element1, config.element2);
   
@@ -389,7 +422,7 @@ void runSCMPComparison(DCFTestConfig config) {
 
 int main(int argc, char **argv) {
   // Parse command line arguments
-  DCFTestConfig config = parseTestArgs(argc, argv);
+  BenchmarkConfig config = parseBenchmarkArgs(argc, argv);
 
   // Initialize environment
   initTestEnvironment();
@@ -412,8 +445,39 @@ int main(int argc, char **argv) {
   return 0;
 }
 
+// Simple JSON output implementation
+void writeJSONResult(const char* test_name, const BenchmarkConfig& config, 
+                    const Stats& stats, bool passed) {
+    char filename[256];
+    sprintf(filename, "output/P%d/%s_results.json", config.party, test_name);
+    
+    FILE* f = fopen(filename, "w");
+    if (!f) return;
+    
+    fprintf(f, "{\n");
+    fprintf(f, "  \"test\": \"%s\",\n", test_name);
+    fprintf(f, "  \"party\": %d,\n", config.party);
+    fprintf(f, "  \"passed\": %s,\n", passed ? "true" : "false");
+    fprintf(f, "  \"configuration\": {\n");
+    fprintf(f, "    \"elements\": [%lu, %lu],\n", config.element1, config.element2);
+    fprintf(f, "    \"bit_width\": %d,\n", config.bin);
+    fprintf(f, "    \"cpu_threads\": %d\n", config.cpu_threads);
+    fprintf(f, "  },\n");
+    fprintf(f, "  \"timing_us\": {\n");
+    fprintf(f, "    \"compute\": %lu,\n", stats.compute_time);
+    fprintf(f, "    \"communication\": %lu,\n", stats.comm_time);
+    fprintf(f, "    \"transfer\": %lu,\n", stats.transfer_time);
+    fprintf(f, "    \"total\": %lu\n", stats.compute_time + stats.comm_time);
+    fprintf(f, "  },\n");
+    fprintf(f, "  \"network\": {\n");
+    fprintf(f, "    \"comm_bytes\": %lu\n", stats.linear_comm_bytes);
+    fprintf(f, "  }\n");
+    fprintf(f, "}\n");
+    fclose(f);
+}
+
 // Test function for two-iteration maximum algorithm
-void runTwoIterationMaximumTest(const DCFTestConfig& config) {
+void runTwoIterationMaximumTest(const BenchmarkConfig& config) {
   printf("\n=== Testing Two-Iteration Maximum Algorithm ===\n");
   
   // Initialize AES context

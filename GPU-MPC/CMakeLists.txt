@@ -43,18 +43,8 @@ endif()
 if(GPU_MPC_BUILD_TESTS)
     add_subdirectory(tests)
     
-    # Main test program in root directory
-    add_executable(test test.cu)
-    target_link_libraries(test PRIVATE
-        gpu_mpc_fss
-        gpu_mpc_utils
-        gpu_mpc_nn
-        gpu_mpc_external
-        gpu_mpc_cuda
-    )
-    set_target_properties(test PROPERTIES
-        CUDA_SEPARABLE_COMPILATION ON
-    )
+    # Benchmarks
+    add_subdirectory(benchmarks)
 endif()
 
 # Experiments
