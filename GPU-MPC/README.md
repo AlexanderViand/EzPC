@@ -9,46 +9,93 @@ Implementation of protocols from the papers [Orca](https://eprint.iacr.org/2023/
 
 This project requires NVIDIA GPUs, and assumes that GPU drivers and the [NVIDIA CUDA Toolkit](https://docs.nvidia.com/cuda/) are already installed. The following has been tested on Ubuntu 20.04 with CUDA 11.7, CMake 3.27.2 and g++-9. 
 
-Please note that Sytorch requires CMake version >= 3.17 and the build will fail if this depency is not met. 
+GPU-MPC requires CMake version >= 3.18 for the modern build system.
 
-The code uses CUTLASS version 2.11 by default, so if you change the CUDA version, please make sure that the CUTLASS version being built is compatible with the new CUDA version.
+### Quick Start (10-30 minutes)
 
-The last line of `setup.sh` tries to install `matplotlib`, which is needed for generating Figures 5a and 5b. In our experience, the installation fails if the versions of Python and `pip` do not match. In case the installation fails, please install `matplotlib` manually before running `run_experiment.py`.
+```bash
+# 1. CMake will check system dependencies and tell you what's missing
+cmake --preset test-only
 
-1. Export environment variables
+# 2. Install any missing packages (example)
+sudo apt update
+sudo apt install gcc-9 g++-9 libssl-dev libeigen3-dev libgmp-dev libmpfr-dev
 
-```
-export CUDA_VERSION=11.7
-export GPU_ARCH=86
-```
-
-2. Set up the environment. 
-
-```
-sh setup.sh <CUTLASS branch>
-```
-
-To change the version of CUTLASS being built, optionally include the CUTLASS branch that should be built as
-
-```
-sh setup.sh <CUTLASS branch>
-```
-For example, to build the main branch, run
-
-```
-sh setup.sh main
+# 3. Build (choose one)
+cmake --preset test-only    # Fast: Core tests only (~10 min)
+cmake --preset full         # Full: Everything including Orca (~30 min)
+cmake --build build
 ```
 
+### Build Options
 
-3. Make Orca
+| Preset | Build Time | Includes | Use Case |
+|--------|------------|----------|----------|
+| `test-only` | ~10 min | Core FSS, DCF, SCMP, SIGMA | Testing & Development |
+| `full` | ~30 min | Everything + Orca + SEAL | Full deployment |
+| `single-gpu` | Varies | Current GPU arch only | Faster compilation |
+| `debug` | Varies | Debug symbols | Debugging |
 
-```
-make orca
-```
-4. Make sigma (this does not require making Orca)
+### Manual Configuration
 
+```bash
+cmake -B build \
+    -DGPU_MPC_BUILD_TESTS=ON \
+    -DGPU_MPC_BUILD_ORCA=OFF \     # OFF = skip SEAL, save 20 min
+    -DGPU_MPC_BUILD_SIGMA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES=86   # Or "native" for current GPU
+    
+cmake --build build -j
 ```
-make sigma
+
+### Build Components
+
+| Option | Default | Description | Additional Dependencies |
+|--------|---------|-------------|------------------------|
+| `GPU_MPC_BUILD_TESTS` | ON | Build test programs | None |
+| `GPU_MPC_BUILD_ORCA` | OFF | Build Orca training | SEAL, SCI-FloatML (~20 min) |
+| `GPU_MPC_BUILD_SIGMA` | ON | Build SIGMA GPT inference | None |
+| `GPU_MPC_BUILD_PIRANHA` | ON | Build Piranha inference | None |
+| `GPU_MPC_DOWNLOAD_DATA` | OFF | Download CIFAR-10 & setup | Python3, matplotlib |
+
+### Dependencies
+
+The build system automatically manages dependencies:
+
+#### Core Dependencies (Always Required)
+- **CUTLASS**: NVIDIA GPU math (fetched automatically, headers only)
+- **Sytorch-GPU**: GPU-enhanced MPC framework in `sytorch-gpu/` with cryptoTools, LLAMA, bitpack, SCI
+- **System**: GCC 9+, OpenSSL, Eigen3, OpenMP, GMP, MPFR
+
+#### Component-Specific
+- **Orca only**: SEAL (fetched automatically), SCI float libraries
+- **SIGMA/Test**: No additional dependencies
+
+#### Datasets (Optional)
+- **MNIST & CIFAR-10**: Downloaded to `data/` when `-DGPU_MPC_DOWNLOAD_DATA=ON`
+- **No git submodules required!**
+
+### Build Performance
+
+The CMake build system is optimized for speed:
+- **CUTLASS**: Headers only, no compilation needed
+- **SEAL**: Only built when Orca is enabled (saves ~20 min)
+- **Parallel fetching**: Dependencies downloaded concurrently
+- **Conditional compilation**: Only builds what you need
+
+## Running Tests
+
+### Basic DCF/SCMP Test
+```bash
+./build/tests/test test 128 0 <peer_ip> 64 1
+# Arguments: <model> <sequence_length> <party> <peer_ip> <cpu_threads> <run_scmp>
+```
+
+### Individual FSS Tests
+```bash
+./build/tests/relu
+./build/tests/dcf_dcf
+./build/tests/softmax
 ```
 
 ## Run Orca
@@ -58,6 +105,31 @@ Please see the [Orca README](experiments/orca/README.md).
 ## Run SIGMA
 
 Please see the [SIGMA README](experiments/sigma/README.md)
+
+## Troubleshooting
+
+### Missing Dependencies
+CMake will tell you exactly what's missing:
+```
+CMake Error: OpenSSL not found.
+Install with:
+  sudo apt update
+  sudo apt install libssl-dev
+```
+
+### Slow Compilation
+- Use `cmake --preset single-gpu` to build for your GPU only
+- Limit parallel jobs: `cmake --build build -j 4`
+
+### SEAL/Orca Errors
+- If you don't need Orca: `-DGPU_MPC_BUILD_ORCA=OFF`
+- SEAL takes ~15-20 minutes to build on first run
+
+### IDE Integration
+The CMake build generates `compile_commands.json` for:
+- VS Code (with CMake Tools extension)
+- CLion
+- Vim/Neovim (with clangd LSP)
 
 ## Docker Build
 
@@ -88,7 +160,11 @@ docker pull trajore/gpu_mpc
 ### Run the Docker Container
 ```
 sudo docker run --gpus all --network host -v /home/$USER/path_to_GPU-MPC/:/home -it container_name /bin/bash
-
 ```
-Then Run setup.sh to configure according to GPU_arch and make Orca/SIGMA as mentioned above.
+
+Then build using CMake:
+```bash
+cmake --preset test-only  # or 'full' for Orca
+cmake --build build
+```
 

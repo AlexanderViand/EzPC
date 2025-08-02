@@ -20,6 +20,8 @@
 #include <cstdint>
 #include <memory>
 
+#include "data_config.h"
+
 namespace cifar {
 
 /*!
@@ -156,7 +158,7 @@ void read_training(const std::string& folder, std::size_t limit, Images& images,
  */
 template <typename Images, typename Labels, typename Functor>
 void read_test(std::size_t limit, Images& images, Labels& labels, Functor func) {
-    read_test("./datasets/cifar-10/cifar-10-batches-bin", limit, images, labels, func);
+    read_test(CIFAR10_DATA_DIR, limit, images, labels, func);
 }
 
 /*!
@@ -169,7 +171,7 @@ void read_test(std::size_t limit, Images& images, Labels& labels, Functor func) 
  */
 template <typename Images, typename Labels, typename Functor>
 void read_training(std::size_t limit, Images& images, Labels& labels, Functor func) {
-    read_training("./datasets/cifar-10/cifar-10-batches-bin", limit, images, labels, func);
+    read_training(CIFAR10_DATA_DIR, limit, images, labels, func);
 }
 
 /*!
@@ -258,7 +260,7 @@ void read_test_categorical(const std::string& folder, std::size_t limit, Images&
  */
 template <typename Images, typename Labels>
 void read_training_categorical(std::size_t limit, Images& images, Labels& labels) {
-    read_training_categorical("cifar-10/cifar-10-batches-bin", limit, images, labels);
+    read_training_categorical(CIFAR10_DATA_DIR, limit, images, labels);
 }
 
 /*!
@@ -271,7 +273,7 @@ void read_training_categorical(std::size_t limit, Images& images, Labels& labels
  */
 template <typename Images, typename Labels>
 void read_test_categorical(std::size_t limit, Images& images, Labels& labels) {
-    read_test_categorical("cifar-10/cifar-10-batches-bin", limit, images, labels);
+    read_test_categorical(CIFAR10_DATA_DIR, limit, images, labels);
 }
 
 /*!

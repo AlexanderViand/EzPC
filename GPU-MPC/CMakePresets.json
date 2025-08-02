@@ -1,0 +1,81 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 18,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "Default Config",
+            "description": "Default build configuration",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "test-only",
+            "inherits": "default",
+            "displayName": "Test Only (Fast)",
+            "description": "Build only core tests without Orca/SEAL",
+            "cacheVariables": {
+                "GPU_MPC_BUILD_TESTS": "ON",
+                "GPU_MPC_BUILD_ORCA": "OFF",
+                "GPU_MPC_BUILD_SIGMA": "ON",
+                "GPU_MPC_BUILD_PIRANHA": "ON"
+            }
+        },
+        {
+            "name": "full",
+            "inherits": "default",
+            "displayName": "Full Build",
+            "description": "Build everything including Orca with SEAL",
+            "cacheVariables": {
+                "GPU_MPC_BUILD_TESTS": "ON",
+                "GPU_MPC_BUILD_ORCA": "ON",
+                "GPU_MPC_BUILD_SIGMA": "ON",
+                "GPU_MPC_BUILD_PIRANHA": "ON",
+                "GPU_MPC_DOWNLOAD_DATA": "ON"
+            }
+        },
+        {
+            "name": "debug",
+            "inherits": "default",
+            "displayName": "Debug Build",
+            "description": "Debug build configuration",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "GPU_MPC_VERBOSE_BUILD": "ON"
+            }
+        },
+        {
+            "name": "single-gpu",
+            "inherits": "default",
+            "displayName": "Single GPU Architecture",
+            "description": "Build for current GPU only (faster compilation)",
+            "cacheVariables": {
+                "CMAKE_CUDA_ARCHITECTURES": "native"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default",
+            "jobs": 0
+        },
+        {
+            "name": "test-only",
+            "configurePreset": "test-only",
+            "jobs": 0
+        },
+        {
+            "name": "full",
+            "configurePreset": "full",
+            "jobs": 0
+        }
+    ]
+}

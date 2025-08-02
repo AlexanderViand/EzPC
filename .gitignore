@@ -10,10 +10,8 @@ SEAL
 .vscode/
 *.dat
 *.npy
-*.txt
 *Zone.Identifier
 *.zip
 *.dot
 *.csv
 *.out
-GPU-MPC/experiments/sigma/sigma_offline_online

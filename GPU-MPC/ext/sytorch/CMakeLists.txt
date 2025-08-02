@@ -42,11 +42,17 @@ PRIVATE
 target_include_directories(${PROJECT_NAME}
 PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext/sci/src>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_link_libraries (${PROJECT_NAME} Eigen3::Eigen Threads::Threads CUDA::cudart LLAMA cryptoTools SCI-FloatML)
+target_link_libraries (${PROJECT_NAME} Eigen3::Eigen Threads::Threads CUDA::cudart LLAMA cryptoTools)
+if(SCI_BUILD_FLOAT_ML)
+    target_link_libraries (${PROJECT_NAME} SCI-FloatML)
+endif()
 
+# Only build examples and tests if requested
+if(BUILD_NETWORKS)
 add_executable(
     gpt2
     examples/gpt2.cpp
@@ -370,3 +376,5 @@ add_executable(
 )
 
 target_link_libraries(gptneobenchmark ${PROJECT_NAME})
+
+endif() # BUILD_NETWORKS

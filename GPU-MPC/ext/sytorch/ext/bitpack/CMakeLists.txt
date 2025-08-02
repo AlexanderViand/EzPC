@@ -14,9 +14,10 @@ PUBLIC
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-add_executable(
-    bitpack_test
-    tests/test.cpp
-)
-
-target_link_libraries(bitpack_test ${PROJECT_NAME})
+# Disable test build - not needed for GPU-MPC
+# add_executable(
+#     bitpack_test
+#     tests/test.cpp
+# )
+# 
+# target_link_libraries(bitpack_test ${PROJECT_NAME})
