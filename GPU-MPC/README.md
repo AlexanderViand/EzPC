@@ -168,3 +168,59 @@ cmake --preset test-only  # or 'full' for Orca
 cmake --build build
 ```
 
+## Cloud Deployment with SkyPilot
+
+GPU-MPC can be easily deployed to cloud GPUs using [SkyPilot](https://skypilot.co/). This automates cluster provisioning, dependency installation, and multi-node MPC execution.
+
+### Quick Start
+
+```bash
+# Install SkyPilot
+pip install skypilot[gcp]  # or [aws], [azure]
+
+# Launch 2-node MPC cluster (auto-terminates after 60 min idle by default)
+cd GPU-MPC
+sky launch sky.yaml
+
+# Run SCMP protocol
+sky launch sky.yaml --env TEST=scmp
+
+# Development mode (single node)
+sky launch sky.yaml --env NODES=1
+
+# Override auto-termination (e.g., for long experiments)
+sky launch sky.yaml --idle-minutes-to-autostop 180  # 3 hours
+sky launch sky.yaml -i 0  # Disable auto-termination
+```
+
+### Development Workflow
+
+After making code changes:
+
+```bash
+# Sync and rebuild without restarting cluster
+sky exec <cluster-name> sky.yaml --env REBUILD=1
+
+# Run updated test
+sky exec <cluster-name> sky.yaml --env TEST=dcf
+```
+
+### Configuration Options
+
+| Variable | Options | Default | Description |
+|----------|---------|---------|-------------|
+| `TEST` | `basic`, `dcf`, `scmp` | `basic` | MPC protocol to run |
+| `GPU` | `T4`, `V100`, `A100`, `L4` | `T4` | GPU type (auto-sets CUDA arch) |
+| `NODES` | `1`, `2` | `2` | 1=dev mode, 2=MPC mode |
+| `MODEL` | `dcf-test`, etc. | `dcf-test` | Model to test |
+| `SEQ_LEN` | Any integer | `128` | Sequence length |
+| `CPU_THREADS` | Any integer | `4` | Number of CPU threads |
+
+### Cost Optimization
+
+- Uses spot instances by default (3-6x cheaper)
+- T4 GPUs recommended for best cost/performance
+- Remember to terminate clusters: `sky down <cluster-name>`
+
+See `sky.yaml` for full configuration details.
+

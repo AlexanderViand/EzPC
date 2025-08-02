@@ -11,15 +11,19 @@ resources:
   use_spot: true
   # Use Google Deep Learning VM with CUDA 12.8 pre-installed (Ubuntu 22.04)
   image_id: projects/deeplearning-platform-release/global/images/common-cu128-ubuntu-2204-nvidia-570-v20250728
+  # Auto-terminate after 60 minutes idle (override with --idle-minutes-to-autostop)
+  autostop:
+    idle_minutes: 60
+    down: true  # Terminate instead of just stopping
 
 num_nodes: 2  # Override with --env NODES=1 for dev mode
 
-file_mounts:
-  /workspace/GPU-MPC: .  # Run from GPU-MPC dir: cd GPU-MPC && sky launch skypilot/sky.yaml
+workdir: .  # Auto-syncs on both sky launch and sky exec
+            # Run from GPU-MPC dir: cd GPU-MPC && sky launch skypilot/sky.yaml
 
 setup: |
   echo "=== GPU-MPC VM Setup ==="
-  cd /workspace/GPU-MPC
+  # Already in ~/sky_workdir when using workdir
   
   # Install all dependencies
   sudo apt-get update
@@ -62,7 +66,7 @@ setup: |
   echo "=== Setup Complete ==="
 
 run: |
-  cd /workspace/GPU-MPC
+  # Already in ~/sky_workdir when using workdir
   
   # Development mode (single node)
   if [ "${NODES:-2}" = "1" ]; then
@@ -71,6 +75,17 @@ run: |
     echo "  ./test 0 &        # Server"
     echo "  ./test 1 localhost # Client"
     sleep infinity
+  fi
+  
+  # Rebuild mode - for quick sync and rebuild
+  if [ "${REBUILD:-0}" = "1" ]; then
+    echo "=== Rebuild Mode ==="
+    echo "Rebuilding on all nodes..."
+    cd build
+    cmake --build . --parallel --target test
+    cp test ../
+    echo "Rebuild complete!"
+    exit 0
   fi
   
   # Production mode (2-party MPC)
