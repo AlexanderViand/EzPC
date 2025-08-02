@@ -47,7 +47,15 @@ extern "C" void initGPUMemPool()
     uint64_t threshold = UINT64_MAX;
     checkCudaErrors(cudaMemPoolSetAttribute(mempool, cudaMemPoolAttrReleaseThreshold, &threshold));
     uint64_t *d_dummy_ptr;
-    uint64_t bytes = 20 * (1ULL << 30);
+    
+    // Get available GPU memory instead of hardcoding 20GB
+    size_t free_mem, total_mem;
+    checkCudaErrors(cudaMemGetInfo(&free_mem, &total_mem));
+    // Use 90% of available memory
+    uint64_t bytes = (uint64_t)(free_mem * 0.9);
+    printf("GPU Memory: Total=%zuGB, Free=%zuGB, Allocating=%zuGB\n", 
+           total_mem >> 30, free_mem >> 30, bytes >> 30);
+    
     checkCudaErrors(cudaMallocAsync(&d_dummy_ptr, bytes, 0));
     checkCudaErrors(cudaFreeAsync(d_dummy_ptr, 0));
     uint64_t reserved_read, threshold_read;

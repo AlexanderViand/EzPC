@@ -9,11 +9,13 @@ resources:
   cpus: 4+
   memory: 8+
   use_spot: true
+  # Use Google Deep Learning VM with CUDA 12.8 pre-installed (Ubuntu 22.04)
+  image_id: projects/deeplearning-platform-release/global/images/common-cu128-ubuntu-2204-nvidia-570-v20250728
 
 num_nodes: 2  # Override with --env NODES=1 for dev mode
 
 file_mounts:
-  /workspace: .
+  /workspace/GPU-MPC: .  # Run from GPU-MPC dir: cd GPU-MPC && sky launch skypilot/sky.yaml
 
 setup: |
   echo "=== GPU-MPC VM Setup ==="
@@ -75,22 +77,46 @@ run: |
   TEST=${TEST:-basic}
   echo "=== 2-Party MPC: $TEST ==="
   
+  # Set default parameters for test program
+  MODEL=${MODEL:-dcf-test}
+  SEQ_LEN=${SEQ_LEN:-128}
+  CPU_THREADS=${CPU_THREADS:-4}
+  
   if [ "${SKYPILOT_NODE_RANK}" -eq 0 ]; then
     echo "Server (Party 0)"
+    echo "Model: $MODEL, Sequence Length: $SEQ_LEN, CPU Threads: $CPU_THREADS"
     case $TEST in
-      scmp) ./test 0 --run-scmp ;;
-      compare) ./test 0 --compare-aggregate ;;
-      basic) ./test 0 ;;
-      *) echo "Unknown test: $TEST (available: basic, scmp, compare)"; exit 1 ;;
+      scmp) 
+        echo "Running SCMP test..."
+        ./test $MODEL $SEQ_LEN 0 0.0.0.0 $CPU_THREADS 1
+        ;;
+      basic|dcf) 
+        echo "Running DCF test..."
+        ./test $MODEL $SEQ_LEN 0 0.0.0.0 $CPU_THREADS 0
+        ;;
+      *) 
+        echo "Unknown test: $TEST (available: basic, dcf, scmp)"
+        echo "Usage: sky launch skypilot/sky.yaml --env TEST=scmp"
+        exit 1 
+        ;;
     esac
   else
     HEAD_IP=$(echo "$SKYPILOT_NODE_IPS" | head -n1)
     echo "Client (Party 1) -> $HEAD_IP"
+    echo "Model: $MODEL, Sequence Length: $SEQ_LEN, CPU Threads: $CPU_THREADS"
     sleep 10
     case $TEST in
-      scmp) ./test 1 $HEAD_IP --run-scmp ;;
-      compare) ./test 1 $HEAD_IP --compare-aggregate ;;
-      basic) ./test 1 $HEAD_IP ;;
-      *) echo "Unknown test: $TEST (available: basic, scmp, compare)"; exit 1 ;;
+      scmp)
+        echo "Running SCMP test as client..."
+        ./test $MODEL $SEQ_LEN 1 $HEAD_IP $CPU_THREADS 1
+        ;;
+      basic|dcf)
+        echo "Running DCF test as client..."
+        ./test $MODEL $SEQ_LEN 1 $HEAD_IP $CPU_THREADS 0
+        ;;
+      *)
+        echo "Unknown test: $TEST (available: basic, dcf, scmp)"
+        exit 1
+        ;;
     esac
   fi

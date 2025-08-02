@@ -216,7 +216,14 @@ public:
         initGPURandomness();
         initCPURandomness();
         initGPUMemPool();
-        keyBufSize = 20 * OneGB;
+        
+        // Get available GPU memory instead of hardcoding 20GB
+        size_t free_mem, total_mem;
+        checkCudaErrors(cudaMemGetInfo(&free_mem, &total_mem));
+        // Use 90% of available memory for key buffer
+        keyBufSize = (size_t)(free_mem * 0.9);
+        printf("Allocating key buffer: %zuGB\n", keyBufSize >> 30);
+        
         getAlignedBuf(&keyBuf, keyBufSize, true);
         startPtr = keyBuf;
     }

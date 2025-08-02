@@ -1,0 +1,4 @@
+# SkyPilot ignore file for GPU-MPC
+# Exclude build artifacts to speed up sync
+
+build/
