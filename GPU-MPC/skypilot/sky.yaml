@@ -1,0 +1,96 @@
+# GPU-MPC SkyPilot Configuration
+# Usage: sky launch sky.yaml --env TEST=scmp --env GPU=T4
+# Development: sky launch sky.yaml --env NODES=1
+name: gpu-mpc
+
+resources:
+  cloud: gcp
+  accelerators: T4:1  # Override with --env GPU=L4/A100
+  cpus: 4+
+  memory: 8+
+  use_spot: true
+
+num_nodes: 2  # Override with --env NODES=1 for dev mode
+
+file_mounts:
+  /workspace: .
+
+setup: |
+  echo "=== GPU-MPC VM Setup ==="
+  cd /workspace/GPU-MPC
+  
+  # Install all dependencies
+  sudo apt-get update
+  sudo apt-get install -y build-essential cmake git \
+    libssl-dev libeigen3-dev libgmp-dev libmpfr-dev
+  
+  # Auto-detect GPU architecture
+  case "${GPU:-T4}" in
+    T4) GPU_ARCH=75 ;;
+    V100) GPU_ARCH=70 ;;
+    A100) GPU_ARCH=80 ;;
+    L4) GPU_ARCH=89 ;;
+    *) GPU_ARCH=75 ;;
+  esac
+  
+  echo "Building for GPU: ${GPU:-T4} (CUDA arch: $GPU_ARCH)"
+  echo "CUDA version: $(nvcc --version | grep release)"
+  
+  # Ultra-fast CMake build with optimizations
+  mkdir -p build && cd build
+  
+  echo "Starting CMake configuration..."
+  time cmake -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_CUDA_ARCHITECTURES=$GPU_ARCH \
+        -DGPU_MPC_BUILD_ORCA=OFF \
+        -DGPU_MPC_BUILD_TESTS=ON \
+        -DGPU_MPC_DOWNLOAD_DATASETS=OFF \
+        ..
+  
+  echo "Starting parallel build (using $(nproc) cores)..."
+  time cmake --build . --parallel --target test
+  
+  echo "Build complete! Copying executable..."
+  cp test ../test
+  
+  echo "=== Build Summary ==="
+  ls -la ../test
+  echo "Ready for MPC protocols!"
+  
+  echo "=== Setup Complete ==="
+
+run: |
+  cd /workspace/GPU-MPC
+  
+  # Development mode (single node)
+  if [ "${NODES:-2}" = "1" ]; then
+    echo "=== Development Mode ==="
+    echo "SSH in and run:"
+    echo "  ./test 0 &        # Server"
+    echo "  ./test 1 localhost # Client"
+    sleep infinity
+  fi
+  
+  # Production mode (2-party MPC)
+  TEST=${TEST:-basic}
+  echo "=== 2-Party MPC: $TEST ==="
+  
+  if [ "${SKYPILOT_NODE_RANK}" -eq 0 ]; then
+    echo "Server (Party 0)"
+    case $TEST in
+      scmp) ./test 0 --run-scmp ;;
+      compare) ./test 0 --compare-aggregate ;;
+      basic) ./test 0 ;;
+      *) echo "Unknown test: $TEST (available: basic, scmp, compare)"; exit 1 ;;
+    esac
+  else
+    HEAD_IP=$(echo "$SKYPILOT_NODE_IPS" | head -n1)
+    echo "Client (Party 1) -> $HEAD_IP"
+    sleep 10
+    case $TEST in
+      scmp) ./test 1 $HEAD_IP --run-scmp ;;
+      compare) ./test 1 $HEAD_IP --compare-aggregate ;;
+      basic) ./test 1 $HEAD_IP ;;
+      *) echo "Unknown test: $TEST (available: basic, scmp, compare)"; exit 1 ;;
+    esac
+  fi

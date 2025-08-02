@@ -50,6 +50,7 @@ if(GPU_MPC_BUILD_TESTS)
         gpu_mpc_utils
         gpu_mpc_nn
         gpu_mpc_external
+        gpu_mpc_cuda
     )
     set_target_properties(test PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
