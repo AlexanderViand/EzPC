@@ -22,6 +22,9 @@
 #pragma once
 
 #include "utils/gpu_data_types.h"
+#include "utils/gpu_random.h"
+#include "utils/gpu_mem.h"
+#include "utils/gpu_file_utils.h"
 #include "gpu_dpf_templates.h"
 
 typedef void (*genShares)(u64 x, u8 *tab);
@@ -33,7 +36,7 @@ struct GPUSSTabKey
     u64 memSzSS, memSzOut;
 };
 
-GPUSSTabKey readGPUSSTabKey(u8 **key_as_bytes)
+inline GPUSSTabKey readGPUSSTabKey(u8 **key_as_bytes)
 {
     GPUSSTabKey k;
     memcpy(&k, *key_as_bytes, 2 * sizeof(int));
@@ -45,7 +48,7 @@ GPUSSTabKey readGPUSSTabKey(u8 **key_as_bytes)
     return k;
 }
 
-__device__ u8 lookup(u8 *ss, u64 x)
+__device__ inline u8 lookup(u8 *ss, u64 x)
 {
     return u8((ss[x / 8] >> (x % 8)) & u8(1));
 }
@@ -89,14 +92,14 @@ u32 *gpuLookupSSTable(GPUSSTabKey &k, int party, T *d_in, Stats* s, std::vector<
     return d_out;
 }
 
-__device__ void dpfShares(u64 x, u8 *tab)
+__device__ inline void dpfShares(u64 x, u8 *tab)
 {
     int idx = x / 8;
     u8 c = u8(1) << (x % 8);
     tab[idx] ^= c;
 }
 
-__device__ void dcfShares(u64 x, u8 *tab)
+__device__ inline void dcfShares(u64 x, u8 *tab)
 {
     int idx = x / 8;
     // printf("Rin=%ld, tab[0]=%d, %d\n", x, tab[0], idx);

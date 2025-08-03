@@ -31,7 +31,7 @@
 #include <omp.h>
 #include <filesystem>
 
-char *readFile(std::string filename)
+inline char *readFile(std::string filename)
 {
     std::ifstream file(filename, std::ios::binary);
     size_t fileSz = std::filesystem::file_size(filename);

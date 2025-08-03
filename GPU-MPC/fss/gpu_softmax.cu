@@ -19,9 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "gpu_softmax.h"
-#include "gpu_avgpool.h"
-#include "gpu_truncate.h"
+#include "gpu_softmax.cuh"
+#include "gpu_avgpool.cuh"
+#include "gpu_truncate.cuh"
 
 template <typename T>
 __global__ void expandLtMatrixKernel(int N, int imgH, int imgW, T *ltA, T *A, T c)

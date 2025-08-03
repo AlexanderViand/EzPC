@@ -23,7 +23,7 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_random.h"
-#include "dcf/gpu_dcf.h"
+#include "dcf/gpu_dcf.cuh"
 
 // GPU DualDCF Key structure (required for SCMP)
 struct GPUDualDCFKey
@@ -75,7 +75,4 @@ void keyGenGPULessThan(int Bin, int Bout, u64 rin1, u64 rin2, u64 rout,
 void evalGPULessThan(int party, u64 *res, u64 x, u64 y, const GPUScmpKey &key,
                      int M, AESGlobalContext *gaes);
 
-// Include implementation only when not compiling the .cu file itself
-#ifndef GPU_SCMP_CU_COMPILATION
-#include "gpu_scmp.cu"
-#endif 
+// Implementation is in gpu_scmp.cu 

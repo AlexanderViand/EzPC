@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "gpu_mul.h"
+#include "gpu_mul.cuh"
 
 template <typename T>
 __global__ void keygenBeaver(int bw, int N, T *A, T *B, T *C, T *C1)

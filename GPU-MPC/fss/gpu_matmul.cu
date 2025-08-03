@@ -40,8 +40,8 @@
 #include "cutlass/gemm/device/gemm.h"
 #include "cutlass/gemm/device/gemm_batched.h"
 
-#include "gpu_linear_helper.h"
-#include "gpu_matmul.h"
+#include "gpu_linear_helper.cuh"
+#include "gpu_matmul.cuh"
 
 const int block_sz = 256;
 

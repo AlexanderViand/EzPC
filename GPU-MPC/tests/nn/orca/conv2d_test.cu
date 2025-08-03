@@ -24,13 +24,13 @@
 #include <cstdint>
 
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
 
-#include "fss/gpu_conv2d.h"
-#include "nn/orca/conv2d_layer.h"
+#include "fss/gpu_conv2d.cuh"
+#include "nn/orca/conv2d_layer.cuh"
 
 
 using T = u64;

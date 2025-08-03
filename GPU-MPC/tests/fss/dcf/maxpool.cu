@@ -22,12 +22,12 @@
 #include <cassert>
 
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
 
-#include "fss/dcf/gpu_maxpool.h"
+#include "fss/dcf/gpu_maxpool.cuh"
 
 #include <llama/array.h>
 
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
     int inSz = getInSz(p);
     int outSz = getMSz(p);
 
-    T *h_I, *h_incomingGrad;
+    T *h_I, *h_incomingGrad, *outgoingGrad;
     auto d_inputMask = randomGEOnGpu<T>(inSz, bin);
     // checkCudaErrors(cudaMemset(d_inputMask, 0, inSz * sizeof(T)));
     auto h_inputMask = (T *)moveToCPU((u8 *)d_inputMask, inSz * sizeof(T), NULL);
@@ -136,7 +136,9 @@ int main(int argc, char *argv[])
     auto h_O = (T *)moveToCPU((u8 *)d_O, outSz * sizeof(T), NULL);
 
     T *ct_o = new T[outSz];
-    maxPool2D(p, h_I, ct_o, h_incomingGrad, outgoingGradCt);
+    h_incomingGrad = nullptr;  // Not used in this test
+    outgoingGrad = new T[inSz];  // Required by maxPool2D
+    maxPool2D(p, h_I, ct_o, h_incomingGrad, outgoingGrad);
     for (int i = 0; i < outSz; i++)
     {
         auto unmasked_output = (h_O[i] - h_outputMask[i]);

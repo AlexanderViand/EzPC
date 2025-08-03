@@ -24,12 +24,12 @@
 #include <cassert>
 
 #include "utils/gpu_data_types.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/gpu_comms.cuh"
 
-#include "gpu_truncate.h"
+#include "gpu_truncate.cuh"
 #include "gpu_local_truncate.h"
 
 template <typename TIn, typename TOut>

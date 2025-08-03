@@ -26,9 +26,9 @@
 
 #include "orca_base.h"
 
-#include "fss/dcf/gpu_relu.h"
-#include "fss/dcf/gpu_truncate.h"
-#include "fss/dcf/gpu_maxpool.h"
+#include "fss/dcf/gpu_relu.cuh"
+#include "fss/dcf/gpu_truncate.cuh"
+#include "fss/dcf/gpu_maxpool.cuh"
 // pin all the weights and activations in cpu memory
 
 template <typename T>

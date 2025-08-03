@@ -22,7 +22,7 @@
 #pragma once
 
 #include "utils/gpu_data_types.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_stats.h"
 #include "utils/gpu_mem.h"
 
@@ -41,14 +41,14 @@ namespace dcf
                                 u64 x,
                                 u64 *o_l, u32 *out_g, u64 oStride);
 
-    __device__ void idPrologue(int party, int bin, int N,
+    __device__ inline void idPrologue(int party, int bin, int N,
                                u64 x,
                                u64 *o)
     {
         o[0] = x;
     }
 
-    __device__ void idEpilogue(int party, int bin, int bout, int N,
+    __device__ inline void idEpilogue(int party, int bin, int bout, int N,
                                u64 x,
                                u64 *o_l, u32 *out_g, u64 oStride)
     {
@@ -56,7 +56,7 @@ namespace dcf
         writePackedOp(out_g, o1, bout, N);
     }
 
-    __device__ void maskEpilogue(int party, int bin, int bout, int N,
+    __device__ inline void maskEpilogue(int party, int bin, int bout, int N,
                                  u64 x,
                                  u64 *o_l, u32 *out_g, u64 oStride)
     {
@@ -68,7 +68,7 @@ namespace dcf
         writePackedOp(out_g, o1, bout, N);
     }
 
-    __device__ void dReluPrologue(int party, int bin, int N,
+    __device__ inline void dReluPrologue(int party, int bin, int N,
                                   u64 x,
                                   u64 *o)
     {

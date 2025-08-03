@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_data_types.h"
 
 #include "gpu_fss_helper.h"
@@ -33,7 +33,7 @@ typedef void (*dpfEpilogue)(int party, int bin, int N,
                             u64 x,
                             u8 *o, u32 *out, u64 oStride);
 
-__device__ void idPrologue(int party, int bin, int N,
+__device__ inline void idPrologue(int party, int bin, int N,
                            u64 x,
                            u64 *o)
 {
@@ -115,7 +115,7 @@ __device__ void geluEpilogue(int party, int bin, int N,
 
 }
 
-__device__ void maskEpilogue(int party, int bin, int N,
+__device__ inline void maskEpilogue(int party, int bin, int N,
                              u64 x,
                              u8 *o, u32 *out, u64 oStride)
 {
@@ -126,7 +126,7 @@ __device__ void maskEpilogue(int party, int bin, int N,
     writePackedOp(out, o1, 1, N);
 }
 
-__device__ void idEpilogue(int party, int bin, int N,
+__device__ inline void idEpilogue(int party, int bin, int N,
                            u64 x,
                            u8 *o, u32 *out, u64 oStride)
 {

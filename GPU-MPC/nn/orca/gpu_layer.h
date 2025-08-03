@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include "fss/gpu_aes_shm.h"
-#include "utils/gpu_comms.h"
+#include "fss/gpu_aes_shm.cuh"
+#include "utils/gpu_comms.cuh"
 #include <cassert>
 #include <vector>
 // #include <mutex>

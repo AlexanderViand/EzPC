@@ -21,14 +21,14 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_mem.h"
 
 #include <cassert>
 #include <chrono>
 
 #include "utils/gpu_random.h"
-#include "fss/dcf/gpu_dcf.h"
+#include "fss/dcf/gpu_dcf.cuh"
 
 #include <sytorch/tensor.h>
 

@@ -24,7 +24,7 @@
 #include "utils/helper_cuda.h"
 #include "utils/gpu_random.h"
 
-#include "fss/gpu_aes_shm.h"
+#include "fss/gpu_aes_shm.cuh"
 
 #include <assert.h>
 #include <cstdint>

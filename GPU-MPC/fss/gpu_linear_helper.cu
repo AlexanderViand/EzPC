@@ -27,7 +27,7 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/helper_cuda.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include <cutlass/cutlass.h>
 #include <cutlass/conv/kernel/default_conv2d_fprop.h>
 #include <cutlass/conv/kernel/default_conv2d_dgrad.h>

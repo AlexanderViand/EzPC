@@ -31,12 +31,12 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/helper_cuda.h"
 #include "utils/gpu_random.h"
-#include "datasets/gpu_data.h"
+#include "datasets/gpu_data.cuh"
 
 #include "nn/orca/gpu_layer.h"
 #include "nn/orca/gpu_model.h"

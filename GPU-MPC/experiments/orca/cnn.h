@@ -26,12 +26,12 @@
 #include "utils/gpu_data_types.h"
 
 #include "nn/orca/gpu_model.h"
-#include "nn/orca/conv2d_layer.h"
-#include "nn/orca/maxpool_layer.h"
-#include "nn/orca/relu_layer.h"
-#include "nn/orca/relu_extend_layer.h"
-#include "nn/orca/avg_pool_layer.h"
-#include "nn/orca/fc_layer.h"
+#include "nn/orca/conv2d_layer.cuh"
+#include "nn/orca/maxpool_layer.cuh"
+#include "nn/orca/relu_layer.cuh"
+#include "nn/orca/relu_extend_layer.cuh"
+#include "nn/orca/avg_pool_layer.cuh"
+#include "nn/orca/fc_layer.cuh"
 
 #include "backend/orca.h"
 #include "backend/piranha.h"

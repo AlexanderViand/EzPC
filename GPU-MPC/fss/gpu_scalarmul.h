@@ -22,7 +22,7 @@
 #pragma once
 
 #include "utils/gpu_data_types.h"
-#include "gpu_truncate.h"
+#include "gpu_truncate.cuh"
 
 // Z = aX, where a is a public scalar
 template <typename T>

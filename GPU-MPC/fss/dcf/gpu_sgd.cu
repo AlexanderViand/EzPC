@@ -24,7 +24,7 @@
 #include <cassert>
 #include "utils/gpu_mem.h"
 
-#include "gpu_sgd.h"
+#include "gpu_sgd.cuh"
 
 namespace dcf
 {

@@ -33,10 +33,10 @@
 #include "utils/gpu_random.h"
 
 #include "fss/gpu_add.h"
-#include "fss/gpu_gelu.h"
-#include "fss/gpu_layernorm.h"
-#include "fss/gpu_matmul.h"
-#include "fss/gpu_mha.h"
+#include "fss/gpu_gelu.cuh"
+#include "fss/gpu_layernorm.cuh"
+#include "fss/gpu_matmul.cuh"
+#include "fss/gpu_mha.cuh"
 
 template <typename T>
 void noTruncateAfterRmsnorm(LayerGraphNode<T> *n, LayerGraphNode<T> *r) {

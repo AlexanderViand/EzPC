@@ -21,14 +21,12 @@
 
 #pragma once
 
-#include "../utils/gpu_data_types.h"
-#include "../utils/gpu_file_utils.h"
-#include "../utils/misc_utils.h"
-#include "../utils/gpu_mem.h"
-#include "../utils/gpu_random.h"
-#include "../utils/gpu_comms.h"
-#include "../fss/dcf/gpu_dcf.h"
-#include "../fss/gpu_scmp.h"
+#include "utils/gpu_data_types.h"
+#include "utils/gpu_file_utils.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_mem.h"
+#include "utils/gpu_random.h"
+#include "utils/gpu_comms.cuh"
 #include <sytorch/tensor.h>
 #include <sytorch/backend/llama_transformer.h>
 #include <llama/comms.h>
@@ -36,6 +34,8 @@
 #include <omp.h>
 #include <chrono>
 #include <string>
+#include <functional>
+#include <map>
 
 using T = u64;
 
@@ -48,23 +48,29 @@ struct BenchmarkConfig {
     int cpu_threads;    // Number of CPU threads
     T element1;         // First element to compare
     T element2;         // Second element to compare
-    bool run_scmp;      // Whether to run SCMP test
+    std::string task;   // Task to run (dcf, scmp, twomax)
 };
 
-// Function to parse command line arguments
-BenchmarkConfig parseBenchmarkArgs(int argc, char **argv);
+// Task registration system
+using TaskFunction = std::function<void(int party, const std::string& peer_ip, int threads)>;
 
-// Function to run DCF-based comparison between two elements
-void runDCFComparison(const BenchmarkConfig& config);
+// Robust registration pattern to avoid static initialization order issues
+inline std::map<std::string, TaskFunction>& getTaskRegistry() {
+    static std::map<std::string, TaskFunction>* tasks = nullptr;
+    if (!tasks) tasks = new std::map<std::string, TaskFunction>();
+    return *tasks;
+}
+
+inline bool registerTask(const std::string& name, TaskFunction func) {
+    getTaskRegistry()[name] = func;
+    return true;
+}
 
 // Helper function to initialize test environment
 void initTestEnvironment();
 
 // Helper function to cleanup test environment  
 void cleanupTestEnvironment();
-
-// Function to test two-iteration maximum algorithm
-void runTwoIterationMaximumTest(const BenchmarkConfig& config);
 
 // Simple share reconstruction utilities
 template<typename T>

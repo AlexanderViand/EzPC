@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "gpu_inverse.h"
+#include "gpu_inverse.cuh"
 
 template <typename T>
 T* gpuKeygenLUTInverse(u8** key_as_bytes, int party, int bw, int bin, int scale, int N, T* d_mask_X, AESGlobalContext* gaes) {

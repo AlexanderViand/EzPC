@@ -21,8 +21,8 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
 
@@ -30,7 +30,7 @@
 #include <numeric>
 #include <sytorch/backend/cleartext.h>
 
-#include "fss/gpu_softmax.h"
+#include "fss/gpu_softmax.cuh"
 
 using T = u64;
 

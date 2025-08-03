@@ -1,7 +1,7 @@
 #include <llama/dcf.h>
 #include <sytorch/random.h>
 #include <sytorch/utils.h>
-#include "fss/gpu_aes_shm.h"
+#include "fss/gpu_aes_shm.cuh"
 #include "fss/gpu_fss_helper.h"
 
 using namespace osuCrypto;

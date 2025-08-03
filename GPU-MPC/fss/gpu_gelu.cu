@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "gpu_maxpool.h"
-#include "gpu_gelu.h"
+#include "gpu_maxpool.cuh"
+#include "gpu_gelu.cuh"
 
 template <typename TIn, typename TOut>
 __global__ void keyGenGeluMuxKernel(int party, int bin, int bout, TOut *linFunc, int N, TIn *b0Mask, TIn *b1Mask, TIn *mask_X, TOut *outMask, TOut *c0, TOut *c1)

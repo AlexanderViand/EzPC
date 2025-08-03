@@ -72,65 +72,54 @@ run: |
   if [ "${NODES:-2}" = "1" ]; then
     echo "=== Development Mode ==="
     echo "SSH in and run:"
-    echo "  ./mpc_benchmark 0 &        # Server"
-    echo "  ./mpc_benchmark 1 localhost # Client"
+    echo "  ./mpc_benchmark dcf 0 localhost 4        # Server"
+    echo "  ./mpc_benchmark dcf 1 localhost 4        # Client"
     sleep infinity
   fi
   
-  # Rebuild mode - for quick sync and rebuild
+  # Rebuild if requested (works with any task)
   if [ "${REBUILD:-0}" = "1" ]; then
-    echo "=== Rebuild Mode ==="
-    echo "Rebuilding on all nodes..."
+    echo "=== Rebuilding before running task ==="
     cd build
     cmake --build . --parallel --target mpc_benchmark
     cp benchmarks/mpc_benchmark ../
+    cd ..
     echo "Rebuild complete!"
-    exit 0
   fi
   
   # Production mode (2-party MPC)
-  TEST=${TEST:-basic}
-  echo "=== 2-Party MPC: $TEST ==="
+  TASK=${TASK:-dcf}
+  echo "=== 2-Party MPC Task: $TASK ==="
   
-  # Set default parameters for test program
-  MODEL=${MODEL:-dcf-test}
-  SEQ_LEN=${SEQ_LEN:-128}
+  # Set default parameters
   CPU_THREADS=${CPU_THREADS:-4}
   
   if [ "${SKYPILOT_NODE_RANK}" -eq 0 ]; then
     echo "Server (Party 0)"
-    echo "Model: $MODEL, Sequence Length: $SEQ_LEN, CPU Threads: $CPU_THREADS"
-    case $TEST in
-      scmp) 
-        echo "Running SCMP test..."
-        ./mpc_benchmark $MODEL $SEQ_LEN 0 0.0.0.0 $CPU_THREADS 1
-        ;;
-      basic|dcf) 
-        echo "Running DCF test..."
-        ./mpc_benchmark $MODEL $SEQ_LEN 0 0.0.0.0 $CPU_THREADS 0
+    echo "Task: $TASK, CPU Threads: $CPU_THREADS"
+    case $TASK in
+      dcf|scmp|twomax)
+        echo "Running $TASK benchmark..."
+        ./mpc_benchmark $TASK 0 0.0.0.0 $CPU_THREADS
         ;;
       *) 
-        echo "Unknown test: $TEST (available: basic, dcf, scmp)"
-        echo "Usage: sky launch skypilot/sky.yaml --env TEST=scmp"
+        echo "Unknown task: $TASK (available: dcf, scmp, twomax)"
+        echo "Usage: sky launch sky.yaml --env TASK=scmp [--env REBUILD=1]"
         exit 1 
         ;;
     esac
   else
     HEAD_IP=$(echo "$SKYPILOT_NODE_IPS" | head -n1)
     echo "Client (Party 1) -> $HEAD_IP"
-    echo "Model: $MODEL, Sequence Length: $SEQ_LEN, CPU Threads: $CPU_THREADS"
+    echo "Task: $TASK, CPU Threads: $CPU_THREADS"
     sleep 10
-    case $TEST in
-      scmp)
-        echo "Running SCMP test as client..."
-        ./mpc_benchmark $MODEL $SEQ_LEN 1 $HEAD_IP $CPU_THREADS 1
-        ;;
-      basic|dcf)
-        echo "Running DCF test as client..."
-        ./mpc_benchmark $MODEL $SEQ_LEN 1 $HEAD_IP $CPU_THREADS 0
+    case $TASK in
+      dcf|scmp|twomax)
+        echo "Running $TASK benchmark as client..."
+        ./mpc_benchmark $TASK 1 $HEAD_IP $CPU_THREADS
         ;;
       *)
-        echo "Unknown test: $TEST (available: basic, dcf, scmp)"
+        echo "Unknown task: $TASK (available: dcf, scmp, twomax)"
         exit 1
         ;;
     esac

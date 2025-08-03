@@ -30,8 +30,8 @@
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_random.h"
 
-#include "gpu_layernorm.h"
-#include "gpu_maxpool.h"
+#include "gpu_layernorm.cuh"
+#include "gpu_maxpool.cuh"
 
 typedef u64 (*pFunc)(int party, int N, int i, u64 x, u8 *bytes);
 

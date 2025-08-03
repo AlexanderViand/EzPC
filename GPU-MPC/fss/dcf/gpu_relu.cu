@@ -19,8 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "gpu_relu.h"
-#include "utils/gpu_comms.h"
+#include "gpu_relu.cuh"
+#include "utils/gpu_comms.cuh"
 
 namespace dcf
 {

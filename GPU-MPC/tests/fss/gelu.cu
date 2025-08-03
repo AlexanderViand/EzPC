@@ -21,17 +21,17 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
-#include "utils/gpu_comms.h"
+#include "utils/gpu_comms.cuh"
 
 #include <cassert>
 
 #include <sytorch/tensor.h>
 #include <sytorch/backend/cleartext.h>
 
-#include "fss/gpu_gelu.h"
+#include "fss/gpu_gelu.cuh"
 
 using T = u64;
 

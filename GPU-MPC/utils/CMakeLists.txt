@@ -3,7 +3,9 @@
 set(UTILS_SOURCES
     # GPU utilities
     gpu_mem.cu
-    # Note: gpu_random.cu is included by gpu_random.h, don't compile separately
+    gpu_comms.cu
+    gpu_random.cu
+    misc_utils.cu
     
     # File and communication utilities
     gpu_file_utils.cpp
@@ -24,6 +26,7 @@ target_link_libraries(gpu_mpc_utils
         gpu_mpc_external  # This includes sytorch and other dependencies
         CUDA::cudart
         CUDA::nvml
+        CUDA::curand
 )
 
 # Set CUDA properties

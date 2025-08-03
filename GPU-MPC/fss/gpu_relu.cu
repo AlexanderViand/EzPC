@@ -32,9 +32,9 @@
 #include "utils/helper_cuda.h"
 #include "utils/gpu_mem.h"
 
-#include "gpu_select.h"
+#include "gpu_select.cuh"
 #include "gpu_and.h"
-#include "gpu_relu.h"
+#include "gpu_relu.cuh"
 
 using namespace std;
 

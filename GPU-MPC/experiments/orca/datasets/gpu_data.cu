@@ -6,7 +6,7 @@
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
 
-#include "gpu_data.h"
+#include "gpu_data.cuh"
 
 
 Dataset readDataset(std::string name, int party)

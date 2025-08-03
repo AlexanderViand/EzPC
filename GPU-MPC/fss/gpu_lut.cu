@@ -19,35 +19,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "gpu_lut.h"
-#include "gpu_dpf.h"
-#include "utils/gpu_comms.h"
+#include "gpu_lut.cuh"
+#include "gpu_dpf.cuh"
+#include "utils/gpu_comms.cuh"
 
-template <typename TIn, typename TOut>
-TOut *gpuKeyGenLUT(uint8_t **key_as_bytes, int party, int bin, int bout, int N,
-                   TIn *d_rin, AESGlobalContext *gaes)
-{
-    writeInt(key_as_bytes, bout);
-    gpuKeyGenDPF(key_as_bytes, party, bin, N, d_rin, gaes, true);
-    auto d_maskU = randomGEOnGpu<TOut>(N, 1);
-    // checkCudaErrors(cudaMemset(d_maskU, 0, N * sizeof(TOut)));
-    writeShares<TOut, TOut>(key_as_bytes, party, N, d_maskU, 1);
-    auto d_maskV = randomGEOnGpu<TOut>(N, bout);
-    // checkCudaErrors(cudaMemset(d_maskV, 0, N * sizeof(TOut)));
-    auto d_maskOut = gpuKeyGenSelect<TOut, TOut>(key_as_bytes, party, N, d_maskV, d_maskU, bout);
-    gpuLinearComb(bout, N, d_maskOut, TOut(2), d_maskOut, TOut(-1), d_maskV);
-    gpuFree(d_maskU);
-    gpuFree(d_maskV);
-    return d_maskOut;
-    // return std::make_pair(d_maskU, d_maskV);
-}
+// Moved gpuKeyGenLUT to gpu_lut.cuh to comply with RULE 2
 
-__device__ void storeAESBlock(AESBlock *x, int idx, AESBlock y, int N, int threadId)
+__device__ inline void storeAESBlock(AESBlock *x, int idx, AESBlock y, int N, int threadId)
 {
     x[idx * N + threadId] = y;
 }
 // stripe the stack across all threads for the time being
-__device__ AESBlock loadAESBlock(AESBlock *x, int idx, int N, int threadId)
+__device__ inline AESBlock loadAESBlock(AESBlock *x, int idx, int N, int threadId)
 {
     return x[idx * N + threadId];
 }

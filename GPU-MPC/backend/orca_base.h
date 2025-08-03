@@ -33,11 +33,11 @@
 #include "utils/gpu_random.h"
 #include "utils/gpu_mem.h"
 
-#include "fss/gpu_matmul.h"
-#include "fss/gpu_conv2d.h"
-#include "fss/gpu_relu.h"
-#include "fss/gpu_maxpool.h"
-#include "fss/gpu_avgpool.h"
+#include "fss/gpu_matmul.cuh"
+#include "fss/gpu_conv2d.cuh"
+#include "fss/gpu_relu.cuh"
+#include "fss/gpu_maxpool.cuh"
+#include "fss/gpu_avgpool.cuh"
 #include "fss/gpu_add.h"
 
 template <typename T>

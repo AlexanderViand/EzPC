@@ -21,12 +21,12 @@
 
 
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
 
-#include "nn/orca/relu_extend_layer.h"
+#include "nn/orca/relu_extend_layer.cuh"
 
 #include <cassert>
 

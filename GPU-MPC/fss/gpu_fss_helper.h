@@ -22,10 +22,10 @@
 #pragma once
 
 #include "utils/gpu_data_types.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 
 
-__host__ __device__ void printAESBlock(AESBlock *b)
+__host__ __device__ inline void printAESBlock(AESBlock *b)
 {
     auto bAsInt = (u8 *)b;
     for (int i = 15; i >= 0; i--)
@@ -45,7 +45,7 @@ __device__ inline T gpuMsb(T x, int bin)
     return ((x >> (bin - 1)) & T(1));
 }
 
-__device__ u64 getVCW(int bout, u32 *vcw, int num_dcfs, int i)
+__device__ inline u64 getVCW(int bout, u32 *vcw, int num_dcfs, int i)
 {
     int threadId = blockIdx.x * blockDim.x + threadIdx.x;
     if (bout == 1 || bout == 2)
@@ -64,7 +64,7 @@ __device__ u64 getVCW(int bout, u32 *vcw, int num_dcfs, int i)
     }
 }
 
-__device__ void writeVCW(int bout, u32 *vcwArr, u64 vcw, int i, int N)
+__device__ inline void writeVCW(int bout, u32 *vcwArr, u64 vcw, int i, int N)
 {
     int threadId = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned mask = __ballot_sync(FULL_MASK, threadId < N);
@@ -109,7 +109,7 @@ __device__ void writeVCW(int bout, u32 *vcwArr, u64 vcw, int i, int N)
     }
 }
 
-u32 *moveMasks(u64 memSz, std::vector<u32 *> *h_masks, Stats *s)
+inline u32 *moveMasks(u64 memSz, std::vector<u32 *> *h_masks, Stats *s)
 {
     // assert(h_masks);
     u32 *d_out = NULL;

@@ -1,7 +1,7 @@
 // GPU Compare-Aggregate algorithms using SCMP
 // Based on "Secure sorting and selection via function secret sharing" by Agarwal et al. (2024)
 
-#include "gpu_compare_aggregate.h"
+#include "gpu_compare_aggregate.cuh"
 #include <cmath>
 #include <vector>
 #include <algorithm>

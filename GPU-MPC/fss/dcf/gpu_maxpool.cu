@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #include "utils/gpu_random.h"
-#include "gpu_dcf.h"
-#include "gpu_maxpool.h"
+#include "gpu_dcf.cuh"
+#include "gpu_maxpool.cuh"
 
 namespace dcf
 {

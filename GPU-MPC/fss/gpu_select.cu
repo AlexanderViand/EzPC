@@ -20,11 +20,11 @@
 // SOFTWARE.
 
 #include "utils/gpu_mem.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_random.h"
 
-#include "gpu_select.h"
-#include "gpu_linear_helper.h"
+#include "gpu_select.cuh"
+#include "gpu_linear_helper.cuh"
 
 // select(b, x-p, 0) + q
 template <typename TIn, typename TOut, u64 p, u64 q>

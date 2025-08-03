@@ -23,12 +23,12 @@
 #include <cassert>
 
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
 
-#include "nn/orca/maxpool_layer.h"
+#include "nn/orca/maxpool_layer.cuh"
 
 #include <llama/array.h>
 

@@ -25,12 +25,12 @@
 
 #include "utils/gpu_mem.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_random.h"
 
-#include "fss/gpu_matmul.h"
-#include "nn/orca/fc_layer.h"
+#include "fss/gpu_matmul.cuh"
+#include "nn/orca/fc_layer.cuh"
 
 using T = u64;
 

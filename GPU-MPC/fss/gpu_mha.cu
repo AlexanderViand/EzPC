@@ -24,15 +24,15 @@
 #include <cassert>
 #include <cmath>
 
-#include "gpu_mha.h"
+#include "gpu_mha.cuh"
 
 #include "utils/gpu_mem.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_random.h"
 
 #include "fss/gpu_scalarmul.h"
-#include "fss/gpu_truncate.h"
+#include "fss/gpu_truncate.cuh"
 
 template <typename T>
 __global__ void rotEmbKernel(MHAParams pMHA, int bw, int scale, u64 N, T *X, T *Y)

@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "gpu_avgpool.h"
+#include "gpu_avgpool.cuh"
 
 template <typename T>
 __global__ void addPoolKernel(AvgPoolParams p, T *I, T *O, int N)

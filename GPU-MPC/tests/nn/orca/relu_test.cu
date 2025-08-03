@@ -24,15 +24,15 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
 
-#include "fss/dcf/gpu_dcf.h"
-#include "fss/dcf/gpu_truncate.h"
+#include "fss/dcf/gpu_dcf.cuh"
+#include "fss/dcf/gpu_truncate.cuh"
 
-#include "nn/orca/relu_layer.h"
+#include "nn/orca/relu_layer.cuh"
 
 using T = u64;
 

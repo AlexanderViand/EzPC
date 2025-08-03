@@ -21,10 +21,10 @@
 
 #pragma once
 
-#include "gpu_truncate.h"
-#include "utils/misc_utils.h"
+#include "gpu_truncate.cuh"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_file_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_mem.h"
 
 #include "gpu_dcf_templates.h"

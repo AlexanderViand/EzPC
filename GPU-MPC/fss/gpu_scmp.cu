@@ -19,7 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#define GPU_SCMP_CU_COMPILATION
 #include "gpu_scmp.h"
 #include <assert.h>
 #include <cstdint>
@@ -28,9 +27,9 @@
 #include "utils/gpu_data_types.h"
 #include "utils/helper_cuda.h"
 #include "utils/gpu_random.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_mem.h"
-#include "dcf/gpu_dcf.h"
+#include "dcf/gpu_dcf.cuh"
 #include "dcf/gpu_dcf_templates.h"
 
 // Helper function to split shares (simplified for GPU)

@@ -21,7 +21,7 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_random.h"
-#include "gpu_relu.h"
+#include "gpu_relu.cuh"
 
 template <typename T>
 __global__ void populateCurMax(MaxpoolParams p, T *curMax, T *img, int N)

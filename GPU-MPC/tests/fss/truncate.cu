@@ -21,11 +21,11 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
 
-#include "fss/gpu_truncate.h"
+#include "fss/gpu_truncate.cuh"
 
 #include <cassert>
 #include <sytorch/tensor.h>

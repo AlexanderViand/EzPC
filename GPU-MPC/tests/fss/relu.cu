@@ -21,12 +21,12 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
+#include "utils/misc_utils.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
-#include "utils/gpu_comms.h"
+#include "utils/gpu_comms.cuh"
 
-#include "fss/gpu_relu.h"
+#include "fss/gpu_relu.cuh"
 
 #include <cassert>
 #include <sytorch/tensor.h>

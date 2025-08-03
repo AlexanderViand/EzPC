@@ -23,12 +23,13 @@
 #include <cstdint>
 
 #include "utils/gpu_file_utils.h"
-#include "utils/misc_utils.h"
-#include "utils/gpu_comms.h"
+#include "utils/misc_utils.cuh"
+#include "utils/gpu_comms.cuh"
 #include "utils/gpu_mem.h"
 #include "utils/gpu_random.h"
 
-#include "fss/dcf/gpu_truncate.h"
+#include "fss/dcf/gpu_truncate.cuh"
+#include "fss/gpu_truncate.cuh"  // For checkTrStochastic
 
 using T = u64;
 

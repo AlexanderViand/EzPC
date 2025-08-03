@@ -53,9 +53,9 @@
 #include "utils/gpu_stats.h"
 #include "utils/gpu_random.h"
 
-#include "fss/gpu_linear_helper.h"
+#include "fss/gpu_linear_helper.cuh"
 
-#include "gpu_conv2d.h"
+#include "gpu_conv2d.cuh"
 
 
 const int block_size = 256;

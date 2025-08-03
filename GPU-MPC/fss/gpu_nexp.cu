@@ -19,10 +19,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "gpu_lut.h"
-#include "gpu_truncate.h"
-#include "gpu_mul.h"
-#include "gpu_relu.h"
+#include "gpu_lut.cuh"
+#include "gpu_truncate.cuh"
+#include "gpu_mul.cuh"
+#include "gpu_relu.cuh"
 
 template <typename T>
 T *gpuKeygenNExp(u8 **key_as_bytes, int party, int bw, int bin, int scale, int N, T *d_mask_X, AESGlobalContext *gaes)
