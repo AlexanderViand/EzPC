@@ -72,8 +72,8 @@ run: |
   if [ "${NODES:-2}" = "1" ]; then
     echo "=== Development Mode ==="
     echo "SSH in and run:"
-    echo "  ./mpc_benchmark dcf 0 localhost 4        # Server"
-    echo "  ./mpc_benchmark dcf 1 localhost 4        # Client"
+    echo "  ./mpc_benchmark --task dcf --party 0 --peer localhost --threads 4        # Server"
+    echo "  ./mpc_benchmark --task dcf --party 1 --peer localhost --threads 4        # Client"
     sleep infinity
   fi
   
@@ -100,7 +100,7 @@ run: |
     case $TASK in
       dcf|scmp|twomax)
         echo "Running $TASK benchmark..."
-        ./mpc_benchmark $TASK 0 0.0.0.0 $CPU_THREADS
+        ./mpc_benchmark --task $TASK --party 0 --peer 0.0.0.0 --threads $CPU_THREADS
         ;;
       *) 
         echo "Unknown task: $TASK (available: dcf, scmp, twomax)"
@@ -116,7 +116,7 @@ run: |
     case $TASK in
       dcf|scmp|twomax)
         echo "Running $TASK benchmark as client..."
-        ./mpc_benchmark $TASK 1 $HEAD_IP $CPU_THREADS
+        ./mpc_benchmark --task $TASK --party 1 --peer $HEAD_IP --threads $CPU_THREADS
         ;;
       *)
         echo "Unknown task: $TASK (available: dcf, scmp, twomax)"
