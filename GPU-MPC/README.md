@@ -83,20 +83,43 @@ The CMake build system is optimized for speed:
 - **Parallel fetching**: Dependencies downloaded concurrently
 - **Conditional compilation**: Only builds what you need
 
-## Running Tests
+## Running Benchmarks and Tests
 
-### Basic DCF/SCMP Test
+### MPC Benchmarks
 ```bash
-./build/tests/test test 128 0 <peer_ip> 64 1
-# Arguments: <model> <sequence_length> <party> <peer_ip> <cpu_threads> <run_scmp>
+# DCF (Distributed Comparison Function) benchmark
+./build/benchmarks/mpc_benchmark --task dcf --party 0 --peer <peer_ip> --threads 4
+./build/benchmarks/mpc_benchmark --task dcf --party 1 --peer <peer_ip> --threads 4
+
+# SCMP (Secure Comparison) benchmark
+./build/benchmarks/mpc_benchmark --task scmp --party 0 --peer <peer_ip> --threads 4
+./build/benchmarks/mpc_benchmark --task scmp --party 1 --peer <peer_ip> --threads 4
+
+# Two-iteration maximum benchmark
+./build/benchmarks/mpc_benchmark --task twomax --party 0 --peer <peer_ip> --threads 4
+./build/benchmarks/mpc_benchmark --task twomax --party 1 --peer <peer_ip> --threads 4
+
+# Show help and available tasks
+./build/benchmarks/mpc_benchmark --help
 ```
 
 ### Individual FSS Tests
 ```bash
 ./build/tests/relu
-./build/tests/dcf_dcf
+./build/tests/dcf
 ./build/tests/softmax
+./build/tests/gelu
+./build/tests/layernorm
+./build/tests/mha
+./build/tests/truncate
+# And many more in build/tests/
 ```
+
+### Benchmark Output
+The benchmarks save results in both human-readable and JSON formats to `./output/P{party}/`:
+- `results_summary.txt` - Human-readable summary
+- `results.json` - Machine-readable JSON with detailed metrics
+- `phase_*.json` - Per-phase timing breakdowns
 
 ## Run Orca
 
@@ -183,7 +206,7 @@ cd GPU-MPC
 sky launch sky.yaml
 
 # Run SCMP protocol
-sky launch sky.yaml --env TEST=scmp
+sky launch sky.yaml --env TASK=scmp
 
 # Development mode (single node)
 sky launch sky.yaml --env NODES=1
@@ -202,18 +225,16 @@ After making code changes:
 sky exec <cluster-name> sky.yaml --env REBUILD=1
 
 # Run updated test
-sky exec <cluster-name> sky.yaml --env TEST=dcf
+sky exec <cluster-name> sky.yaml --env TASK=dcf
 ```
 
 ### Configuration Options
 
 | Variable | Options | Default | Description |
 |----------|---------|---------|-------------|
-| `TEST` | `basic`, `dcf`, `scmp` | `basic` | MPC protocol to run |
+| `TASK` | `dcf`, `scmp`, `twomax` | `dcf` | MPC protocol to run |
 | `GPU` | `T4`, `V100`, `A100`, `L4` | `T4` | GPU type (auto-sets CUDA arch) |
 | `NODES` | `1`, `2` | `2` | 1=dev mode, 2=MPC mode |
-| `MODEL` | `dcf-test`, etc. | `dcf-test` | Model to test |
-| `SEQ_LEN` | Any integer | `128` | Sequence length |
 | `CPU_THREADS` | Any integer | `4` | Number of CPU threads |
 
 ### Cost Optimization
