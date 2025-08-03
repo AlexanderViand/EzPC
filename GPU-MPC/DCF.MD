@@ -59,3 +59,36 @@ For secure integer comparison where parties P₀ and P₁ have private inputs x 
 - z is uniformly random due to the mask α
 - Neither party learns anything about x or y beyond the comparison result
 - The DCF evaluation maintains the secret-sharing property
+
+## DDCF-based Integer Comparison
+
+The SCMP (Secure Comparison) implementation uses a more efficient protocol based on DDCF:
+
+For secure integer comparison where parties P₀ and P₁ have shares of x and y respectively:
+
+1. **Offline Phase**:
+   - Choose random masks ρ₁, ρ₂ ∈ Z_{2^n}
+   - Compute μ = -(ρ₁ - ρ₂) (mod 2^n)
+   - Extract MSB: μ_msb = (μ >> (n-1)) & 1
+   - Compute index: μ_idx = μ - (μ_msb << (n-1))
+   - Set DDCF payloads: β₁ = 1 ⊕ μ_msb, β₂ = μ_msb
+   - Generate DDCF keys for f_{μ_idx,β₁,β₂} with domain size 2^(n-1)
+   - Generate random output mask shares r₀, r₁
+
+2. **Online Phase**:
+   - Compute z = x - y (mod 2^n) using the shares directly
+   - Extract MSB: z_msb = (z >> (n-1)) & 1
+   - Compute z' = z - (z_msb << (n-1))
+   - Compute index: idx = 2^(n-1) - z' - 1
+   - Evaluate: mb = EvalDDCF(key_b, idx)
+   - Output: [[x ≥ y]]_b = b - (b · z_msb + mb - 2 · z_msb · mb) + r_b
+
+**Correctness**: The arithmetic formula combines the MSB of z with the DDCF evaluation to produce shares that XOR to 1 if x ≥ y, and 0 otherwise.
+
+**Performance Comparison**:
+- **Key size**: DDCF keys are only ~⌈log n⌉ bits larger than DCF keys (negligible for n=32)
+- **Communication**: DDCF approach requires NO communication during online phase (DCF approach needs one round)
+- **Random values**: DDCF uses 3 (ρ₁, ρ₂, r), DCF uses 3 (α, r₀, r₁) - same amount
+- **Computation**: DDCF approach evaluates once, DCF approach evaluates once - similar cost
+
+The DDCF-based protocol is preferred in practice due to eliminating online communication.
