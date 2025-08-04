@@ -16,6 +16,7 @@ target_include_directories(gpu_mpc_fss
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../utils>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/optimizations>
         $<INSTALL_INTERFACE:include/gpu-mpc>
 )
 
