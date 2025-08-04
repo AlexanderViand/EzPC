@@ -1,20 +1,23 @@
 # set(CMAKE_FIND_DEBUG_MODE 1)
 include_directories(${CMAKE_CURRENT_LIST_DIR})
 
-find_package(Eigen3 3.3 QUIET NO_MODULE PATHS "${PROJECT_SOURCE_DIR}/extern/eigen/build" NO_DEFAULT_PATH)
+# Use FetchContent for Eigen3
+include(FetchContent)
+
+find_package(Eigen3 3.3 QUIET NO_MODULE)
 if (NOT Eigen3_FOUND)
-    message(STATUS "Eigen 3.3 was not found: clone and install Eigen3 locally")
-    if (NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/eigen/CMakeLists.txt")
-        find_package(Git REQUIRED)
-        message(STATUS "initialize Git submodule: extern/eigen")
-        execute_process(COMMAND git submodule update --init --recursive extern/eigen
-                WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-    endif ()
-    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory build
-        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/extern/eigen/")
-    execute_process(COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/build ..
-        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/extern/eigen/build")
-    find_package(Eigen3 3.3 REQUIRED NO_MODULE PATHS "${PROJECT_SOURCE_DIR}/extern/eigen/build" NO_DEFAULT_PATH)
+    message(STATUS "Eigen3 3.3 was not found: fetching from GitHub")
+    FetchContent_Declare(
+        eigen
+        GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+        GIT_TAG 3.3.9
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(eigen)
+    # Eigen3 doesn't create an alias target in older versions
+    if(NOT TARGET Eigen3::Eigen)
+        add_library(Eigen3::Eigen ALIAS eigen)
+    endif()
 endif()
 
 add_subdirectory(utils)
@@ -24,6 +27,8 @@ add_subdirectory(Millionaire)
 add_subdirectory(BuildingBlocks)
 add_subdirectory(LinearOT)
 if(SCI_BUILD_LINEAR_HE)
+    # Configure SEAL before building LinearHE
+    include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/FetchSEAL.cmake)
     add_subdirectory(LinearHE) # Kanav: Removed for now
 endif()
 add_subdirectory(NonLinear)
