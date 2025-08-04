@@ -17,11 +17,12 @@ GPU-MPC requires CMake version >= 3.18 for the modern build system.
 # 1. CMake will check system dependencies and tell you what's missing
 cmake --preset test-only
 
-# 2. Install any missing packages (example)
-sudo apt update
-sudo apt install gcc-9 g++-9 libssl-dev libeigen3-dev libgmp-dev libmpfr-dev
+# 2. Install dependencies
+sudo apt update && sudo apt install gcc-9 g++-9 libssl-dev libeigen3-dev libgmp-dev libmpfr-dev libomp-dev
 
-# 3. Build (choose one)
+# 3. Install any additional missing packages as reported by CMake
+
+# 4. Build (choose one)
 cmake --preset test-only    # Fast: Core tests only (~10 min)
 cmake --preset full         # Full: Everything including Orca (~30 min)
 cmake --build build
@@ -45,7 +46,7 @@ cmake -B build \
     -DGPU_MPC_BUILD_SIGMA=ON \
     -DCMAKE_CUDA_ARCHITECTURES=86   # Or "native" for current GPU
     
-cmake --build build -j
+cmake --build build --parallel
 ```
 
 ### Build Components
@@ -156,40 +157,7 @@ The CMake build generates `compile_commands.json` for:
 
 ## Docker Build
 
-You can also build the docker image using the provided Dockerfile_Gen for building the Environment. 
-
-### Install Nvidia Container Toolkit
-- Configure the repository:
-```
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey |sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
-&& curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list \
-&& sudo apt-get update
-```
-
-- Install the NVIDIA Container Toolkit packages:
-```
-sudo apt-get install -y nvidia-container-toolkit
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo systemctl restart docker
-```
-### Build the Docker Image / pull the image from Docker Hub
-```
-# Local Build
-docker build -t gpu_mpc -f Dockerfile_Gen .
-
-# Pull from Docker Hub (Cuda 11.8)
-docker pull trajore/gpu_mpc
-```
-### Run the Docker Container
-```
-sudo docker run --gpus all --network host -v /home/$USER/path_to_GPU-MPC/:/home -it container_name /bin/bash
-```
-
-Then build using CMake:
-```bash
-cmake --preset test-only  # or 'full' for Orca
-cmake --build build
-```
+**Coming Soon**: Docker support is planned for future releases.
 
 ## Cloud Deployment with SkyPilot
 

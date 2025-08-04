@@ -9,46 +9,30 @@ Implementation of protocols from the paper [SIGMA](https://eprint.iacr.org/2023/
 
 This project requires NVIDIA GPUs, and assumes that GPU drivers and the [NVIDIA CUDA Toolkit](https://docs.nvidia.com/cuda/) are already installed. The following has been tested on Ubuntu 20.04 with CUDA 11.7, CMake 3.27.2 and g++-9. 
 
-Please note that Sytorch requires CMake version >= 3.17 and the build will fail if this depency is not met. 
+GPU-MPC requires CMake version >= 3.18 for the modern build system.
 
-The code uses CUTLASS version 2.11 by default, so if you change the CUDA version, please make sure that the CUTLASS version being built is compatible with the new CUDA version.
+To build SIGMA, use one of the following CMake presets from the root directory:
 
-The last line of `setup.sh` tries to install `matplotlib`, which is needed for generating Figure 10. In our experience, the installation fails if the versions of Python and `pip` do not match. In case the installation fails, please install `matplotlib` manually before running `run_experiment.py`.
-
-1. Export environment variables
-
-```
-export CUDA_VERSION=11.7
-export GPU_ARCH=86
+```bash
+# Build with SIGMA enabled (~10 min)
+cmake --preset test-only
+cmake --build build --parallel
 ```
 
-2. Set up the environment
+or manually configure:
 
-```
-sh setup.sh
-```
+```bash
+cmake -B build -S . \
+    -DGPU_MPC_BUILD_SIGMA=ON \
+    -DGPU_MPC_BUILD_TESTS=ON \
+    -DCMAKE_CUDA_ARCHITECTURES=86
 
-To change the version of CUTLASS being built, optionally include the CUTLASS branch that should be built as
-
-```
-sh setup.sh <CUTLASS branch>
-```
-For example, to build the main branch, run
-
-```
-sh setup.sh main
+cmake --build build --parallel
 ```
 
-3. Make SIGMA
-
-```
-make sigma
-```
-
-4. Switch to the `experiments/sigma` directory
-
-```
-cd experiments/sigma
+Note: `matplotlib` is needed for generating Figure 10. Install it with:
+```bash
+pip install matplotlib
 ```
 
 ## Run SIGMA
@@ -62,7 +46,7 @@ cd experiments/sigma
 
 ### Run standalone
 
-Make produces the `sigma` executable which is in `experiments/sigma`. Each party (the server and the client) needs to run this executable. The executable requires the user to specify the model, sequence length, party number (0 for the server/1 for the client), the IP address of the other party, and the number of CPU threads to use for computation.
+The build produces the `sigma` executable which is in `build/experiments/sigma/`. Each party (the server and the client) needs to run this executable. The executable requires the user to specify the model, sequence length, party number (0 for the server/1 for the client), the IP address of the other party, and the number of CPU threads to use for computation.
 
 The syntax is 
 ```javascript
@@ -73,12 +57,12 @@ We currently support the following models: `bert-tiny, bert-base, bert-large, gp
 
 **Example:** To run GPT2, the server will run:
 ```javascript
-./sigma gpt2 128 0 <client IP> 64
+./build/experiments/sigma/sigma gpt2 128 0 <client IP> 64
 ```
 
 The client will run (_on a different machine_):
 ```javascript
-./sigma gpt2 128 1 <server IP> 64
+./build/experiments/sigma/sigma gpt2 128 1 <server IP> 64
 ```
 
 Results are stored in the `output/P<party number>/models/<model name>-<sequence length>/` folder.

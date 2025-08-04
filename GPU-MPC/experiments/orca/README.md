@@ -10,40 +10,30 @@ Implementation of protocols from the paper [Orca](https://eprint.iacr.org/2023/2
 
 This project requires NVIDIA GPUs, and assumes that GPU drivers and the [NVIDIA CUDA Toolkit](https://docs.nvidia.com/cuda/) are already installed. The following has been tested on Ubuntu 20.04 with CUDA 11.7, CMake 3.27.2 and g++-9. 
 
-Please note that Sytorch requires CMake version >= 3.17 and the build will fail if this depency is not met. 
+GPU-MPC requires CMake version >= 3.18 for the modern build system.
 
-The code uses CUTLASS version 2.11 by default, so if you change the CUDA version, please make sure that the CUTLASS version being built is compatible with the new CUDA version.
+To build Orca, use one of the following CMake presets from the root directory:
 
-The last line of `setup.sh` tries to install `matplotlib`, which is needed for generating Figures 5a and 5b. In our experience, the installation fails if the versions of Python and `pip` do not match. In case the installation fails, please install `matplotlib` manually before running `run_experiment.py`.
-
-1. Export environment variables
-
-```
-export CUDA_VERSION=11.7
-export GPU_ARCH=86
+```bash
+# Build with Orca enabled (includes SEAL, ~30 min)
+cmake --preset full
+cmake --build build --parallel
 ```
 
-2. Set up the environment
+or manually configure:
 
-```
-sh setup.sh
-```
+```bash
+cmake -B build -S . \
+    -DGPU_MPC_BUILD_ORCA=ON \
+    -DGPU_MPC_BUILD_TESTS=ON \
+    -DCMAKE_CUDA_ARCHITECTURES=86
 
-To change the version of CUTLASS being built, optionally include the CUTLASS branch that should be built as
-
-```
-sh setup.sh <CUTLASS branch>
-```
-For example, to build the main branch, run
-
-```
-sh setup.sh main
+cmake --build build --parallel
 ```
 
-3. Make Orca
-
-```
-make orca
+Note: `matplotlib` is needed for generating Figures 5a and 5b. Install it with:
+```bash
+pip install matplotlib
 ```
 
 ## Run Orca
