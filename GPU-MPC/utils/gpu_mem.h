@@ -36,3 +36,13 @@ extern "C" uint8_t *moveIntoGPUMem(uint8_t *d_a, uint8_t *h_a, size_t size_in_by
 extern "C" uint8_t *moveToCPU(uint8_t *d_a, size_t size_in_bytes, Stats *);
 extern "C" uint8_t *moveIntoCPUMem(uint8_t *h_a, uint8_t *d_a, size_t size_in_bytes, Stats *s);
 extern "C" void initGPUMemPool();
+
+// Secure versions of memory management functions
+extern "C" uint8_t *gpuMallocSecure(size_t size_in_bytes);
+extern "C" uint8_t *cpuMallocSecure(size_t size_in_bytes, bool pin = true);
+extern "C" void cpuFreeSecure(void *h_a, size_t size_bytes, bool pinned = true);
+extern "C" void gpuFreeSecure(void *d_a, size_t size_bytes);
+extern "C" uint8_t *moveToGPUSecure(uint8_t *h_a, size_t size_in_bytes, Stats *);
+extern "C" uint8_t *moveIntoGPUMemSecure(uint8_t *d_a, uint8_t *h_a, size_t size_in_bytes, Stats *s);
+extern "C" uint8_t *moveToCPUSecure(uint8_t *d_a, size_t size_in_bytes, Stats *);
+extern "C" uint8_t *moveIntoCPUMemSecure(uint8_t *h_a, uint8_t *d_a, size_t size_in_bytes, Stats *s);
