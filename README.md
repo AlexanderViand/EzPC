@@ -1,81 +1,215 @@
-# EzPC: Easy Secure Multiparty Computation [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/mpc-msri/EzPC/issues)
 
-**Reference Papers:**  
+# GPU-MPC
 
-[SIGMA: Secure GPT Inference with Function Secret Sharing](https://eprint.iacr.org/2023/1269)  
-Kanav Gupta, Neha Jawalkar,  Ananta Mukherjee, Nishanth Chandran, Divya Gupta, Ashish Panwar, Rahul Sharma  
-*PoPETS 2024*
+Implementation of protocols from the papers [Orca](https://eprint.iacr.org/2023/206) and [SIGMA](https://eprint.iacr.org/2023/1269).
 
-[Orca: FSS-based Secure Training with GPUs](https://eprint.iacr.org/2023/206)  
-Neha Jawalkar, Kanav Gupta, Arkaprava Basu, Nishanth Chandran, Divya Gupta, Rahul Sharma  
-*IEEE S&P 2024*
+**Warning**: This is an academic proof-of-concept prototype and has not received careful code review. This implementation is NOT ready for production use.
 
-[Secure Floating-Point Training](https://eprint.iacr.org/2023/467)  
-Deevashwer Rathee, Anwesh Bhattacharya, Divya Gupta, Rahul Sharma, Dawn Song  
-*USENIX Security 2023*
+## Build
 
-[SecFloat: Accurate Floating-Point meets Secure 2-Party Computation](https://eprint.iacr.org/2022/322)  
-Deevashwer Rathee, Anwesh Bhattacharya, Rahul Sharma, Divya Gupta, Nishanth Chandran, Aseem Rastogi  
-*IEEE S&P 2022*
+This project requires NVIDIA GPUs, and assumes that GPU drivers and the [NVIDIA CUDA Toolkit](https://docs.nvidia.com/cuda/) are already installed. The following has been tested on Ubuntu 20.04 with CUDA 11.7, CMake 3.27.2 and g++-9. 
 
-[SIRNN: A Math Library for Secure RNN Inference](https://eprint.iacr.org/2021/459)  
-Deevashwer Rathee, Mayank Rathee, Rahul Kranti Kiran Goli, Divya Gupta, Rahul Sharma, Nishanth Chandran, Aseem Rastogi  
-*IEEE S&P 2021*
+GPU-MPC requires CMake version >= 3.18 for the modern build system.
 
-[CrypTFlow2: Practical 2-Party Secure Inference](https://eprint.iacr.org/2020/1002)  
-Deevashwer Rathee, Mayank Rathee, Nishant Kumar, Nishanth Chandran, Divya Gupta, Aseem Rastogi, Rahul Sharma  
-*ACM CCS 2020*
+### Quick Start (10-30 minutes)
 
-[CrypTFlow: Secure TensorFlow Inference](https://eprint.iacr.org/2019/1049)  
-Nishant Kumar, Mayank Rathee, Nishanth Chandran, Divya Gupta, Aseem Rastogi, Rahul Sharma  
-*IEEE S&P 2020*
+```bash
+# 1. CMake will check system dependencies and tell you what's missing
+cmake --preset test-only
 
-[EzPC: Programmable, Efficient, and Scalable Secure Two-Party Computation for Machine Learning](https://eprint.iacr.org/2017/1109.pdf)  
-Nishanth Chandran, Divya Gupta, Aseem Rastogi, Rahul Sharma, Shardul Tripathi  
-*IEEE EuroS&P 2019*
+# 2. Install dependencies
+sudo apt update && sudo apt install gcc-9 g++-9 libssl-dev libeigen3-dev libgmp-dev libmpfr-dev libomp-dev
 
-**Project webpage:** <https://aka.ms/ezpc>
+# 3. Install any additional missing packages as reported by CMake
 
-## Introduction
-This repository has the following components:  
+# 4. Build (choose one)
+cmake --preset test-only    # Fast: Core tests only (~10 min)
+cmake --preset full         # Full: Everything including Orca (~30 min)
+cmake --build build
+```
 
-- **EzPC**: a language for secure machine learning.
-- **Athos** (part of **CrypTFlow**): an end-to-end compiler from TensorFlow to a variety of semi-honest MPC protocols. Athos leverages EzPC as a low-level intermediate language.
-- **SIRNN**: an end-to-end framework for performing inference over quantized RNN models using semi-honest 2-party computation protocols.
-- **Beacon**: an end-to-end framework for training feed-forward and convolutional neural networks using specialized 2PC floating-point protocols 
-- **Porthos** (part of **CrypTFlow**): a semi-honest 3 party computation protocol which is geared towards TensorFlow-like applications.
-- **Aramis** (part of **CrypTFlow**): a novel technique that uses hardware with integrity guarantees to convert any semi-honest MPC protocol into an MPC protocol that provides malicious security.
-- **SCI** (part of **CrypTFlow2**, **SIRNN**, **SecFloat**, and **Beacon**): a semi-honest 2-party computation library for secure (fixed-point) inference on deep neural networks and secure floating-point computation.
-- **GPU-MPC** (part of **Orca** and **Sigma**): GPU-accelerated FSS protocols
-  
-Each one of the above is independent and usable in their own right and more information can be found in the readme of each of the components. But together these combine to make **CrypTFlow** a powerful system for end-to-end secure inference of deep neural networks written in TensorFlow.
+### Build Options
 
-With these components in place, we are able to run for the first time secure inference on the [ImageNet dataset]([http://www.image-net.org) with the pre-trained models of the following deep neural nets: ResNet-50, DenseNet-121 and SqueezeNet for ImageNet. For an end-to-end tutorial on running models with CrypTFlow please refer to this [blog post](https://pratik-bhatu.medium.com/privacy-preserving-machine-learning-for-healthcare-using-cryptflow-cc6c379fbab7).
+| Preset | Build Time | Includes | Use Case |
+|--------|------------|----------|----------|
+| `test-only` | ~10 min | Core FSS, DCF, SCMP, SIGMA | Testing & Development |
+| `full` | ~30 min | Everything + Orca + SEAL | Full deployment |
+| `single-gpu` | Varies | Current GPU arch only | Faster compilation |
+| `debug` | Varies | Debug symbols | Debugging |
 
-## Setup
-For setup instructions, please refer to each of the components' readme.
+### Manual Configuration
 
-Alternatively you can use the **setup_env_and_build.sh** script. It installs dependencies and builds each component. It also creates a virtual environment in a *mpc_venv* folder with all the required packages. If you want to do setup with default paths and settings do ``./setup_env_and_build.sh quick``, otherwise if you want to manually choose paths you can use ``./setup_env_and_build.sh``.
+```bash
+cmake -B build \
+    -DGPU_MPC_BUILD_TESTS=ON \
+    -DGPU_MPC_BUILD_ORCA=OFF \     # OFF = skip SEAL, save 20 min
+    -DGPU_MPC_BUILD_SIGMA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES=86   # Or "native" for current GPU
+    
+cmake --build build --parallel
+```
 
-Please do ``source mpc_venv/bin/activate`` before using the toolchain.
+### Build Components
 
-## Secure AI Validation
+| Option | Default | Description | Additional Dependencies |
+|--------|---------|-------------|------------------------|
+| `GPU_MPC_BUILD_TESTS` | ON | Build test programs | None |
+| `GPU_MPC_BUILD_ORCA` | OFF | Build Orca training | SEAL, SCI-FloatML (~20 min) |
+| `GPU_MPC_BUILD_SIGMA` | ON | Build SIGMA GPT inference | None |
+| `GPU_MPC_BUILD_PIRANHA` | ON | Build Piranha inference | None |
+| `GPU_MPC_DOWNLOAD_DATA` | OFF | Download CIFAR-10 & setup | Python3, matplotlib |
 
-To setup the repo with modified SCI build such that only secret shares are revealed at the end of 2PC, run the setup script as ``./setup_env_and_build.sh quick NO_REVEAL_OUTPUT``.
-Alternatively, just rebuild SCI. For instructions to build modified SCI, see README for SCI.
+### Dependencies
 
-To build docker image for Secure AI Validation, use the `Dockerfile_AI_Validation` dockerfile.
+The build system automatically manages dependencies:
 
-```docker build -t ezpc_modified - < path/to/EzPC/Dockerfile_AI_Validation```
+#### Core Dependencies (Always Required)
+- **CUTLASS**: NVIDIA GPU math (fetched automatically, headers only)
+- **Sytorch-GPU**: GPU-enhanced MPC framework in `sytorch-gpu/` with cryptoTools, LLAMA, bitpack, SCI
+- **System**: GCC 9+, OpenSSL, Eigen3, OpenMP, GMP, MPFR
 
+#### Component-Specific
+- **Orca only**: SEAL (fetched automatically), SCI float libraries
+- **SIGMA/Test**: No additional dependencies
 
-### Docker
-You can use a pre-built docker image from docker hub using ``docker pull ezpc/ezpc:latest``. We occasionally push stable images to that channel. However, if you want a docker image with the latest code, you can build it yourself using:
+#### Datasets (Optional)
+- **MNIST & CIFAR-10**: Downloaded to `data/` when `-DGPU_MPC_DOWNLOAD_DATA=ON`
+- **No git submodules required!**
 
-```docker build -t ezpc_image - < path/to/EzPC/Dockerfile```
+### Build Performance
 
-## Wiki
-Wiki section of this repository provides coding practices and examples to get started with EzPC.
+The CMake build system is optimized for speed:
+- **CUTLASS**: Headers only, no compilation needed
+- **SEAL**: Only built when Orca is enabled (saves ~20 min)
+- **Parallel fetching**: Dependencies downloaded concurrently
+- **Conditional compilation**: Only builds what you need
 
-## Issues/Bugs
-For bugs and support, please create an issue on the issues page.
+## Running Benchmarks and Tests
+
+### MPC Benchmarks
+```bash
+# DCF (Distributed Comparison Function) benchmark
+./build/benchmarks/mpc_benchmark --task dcf --party 0 --peer <peer_ip> --threads 4
+./build/benchmarks/mpc_benchmark --task dcf --party 1 --peer <peer_ip> --threads 4
+
+# SCMP (Secure Comparison) benchmark
+./build/benchmarks/mpc_benchmark --task scmp --party 0 --peer <peer_ip> --threads 4
+./build/benchmarks/mpc_benchmark --task scmp --party 1 --peer <peer_ip> --threads 4
+
+# Two-iteration maximum benchmark
+./build/benchmarks/mpc_benchmark --task twomax --party 0 --peer <peer_ip> --threads 4
+./build/benchmarks/mpc_benchmark --task twomax --party 1 --peer <peer_ip> --threads 4
+
+# Show help and available tasks
+./build/benchmarks/mpc_benchmark --help
+```
+
+### Individual FSS Tests
+```bash
+./build/tests/relu
+./build/tests/dcf
+./build/tests/softmax
+./build/tests/gelu
+./build/tests/layernorm
+./build/tests/mha
+./build/tests/truncate
+# And many more in build/tests/
+```
+
+### Benchmark Output
+The benchmarks save results in both human-readable and JSON formats to `./output/P{party}/`:
+- `results_summary.txt` - Human-readable summary
+- `results.json` - Machine-readable JSON with detailed metrics
+- `phase_*.json` - Per-phase timing breakdowns
+
+## Run Orca
+
+Please see the [Orca README](experiments/orca/README.md).
+
+## Run SIGMA
+
+Please see the [SIGMA README](experiments/sigma/README.md)
+
+## Troubleshooting
+
+### Missing Dependencies
+CMake will tell you exactly what's missing:
+```
+CMake Error: OpenSSL not found.
+Install with:
+  sudo apt update
+  sudo apt install libssl-dev
+```
+
+### Slow Compilation
+- Use `cmake --preset single-gpu` to build for your GPU only
+- Limit parallel jobs: `cmake --build build -j 4`
+
+### SEAL/Orca Errors
+- If you don't need Orca: `-DGPU_MPC_BUILD_ORCA=OFF`
+- SEAL takes ~15-20 minutes to build on first run
+
+### IDE Integration
+The CMake build generates `compile_commands.json` for:
+- VS Code (with CMake Tools extension)
+- CLion
+- Vim/Neovim (with clangd LSP)
+
+## Docker Build
+
+**Coming Soon**: Docker support is planned for future releases.
+
+## Cloud Deployment with SkyPilot
+
+GPU-MPC can be easily deployed to cloud GPUs using [SkyPilot](https://skypilot.co/). This automates cluster provisioning, dependency installation, and multi-node MPC execution.
+
+### Quick Start
+
+```bash
+# Install SkyPilot
+pip install skypilot[gcp]  # or [aws], [azure]
+
+# Launch 2-node MPC cluster (auto-terminates after 60 min idle by default)
+cd GPU-MPC
+sky launch sky.yaml
+
+# Run SCMP protocol
+sky launch sky.yaml --env TASK=scmp
+
+# Development mode (single node)
+sky launch sky.yaml --env NODES=1
+
+# Override auto-termination (e.g., for long experiments)
+sky launch sky.yaml --idle-minutes-to-autostop 180  # 3 hours
+sky launch sky.yaml -i 0  # Disable auto-termination
+```
+
+### Development Workflow
+
+After making code changes:
+
+```bash
+# Sync and rebuild without restarting cluster
+sky exec <cluster-name> sky.yaml --env REBUILD=1
+
+# Run updated test
+sky exec <cluster-name> sky.yaml --env TASK=dcf
+```
+
+### Configuration Options
+
+| Variable | Options | Default | Description |
+|----------|---------|---------|-------------|
+| `TASK` | `dcf`, `scmp`, `twomax` | `dcf` | MPC protocol to run |
+| `GPU` | `T4`, `V100`, `A100`, `L4` | `T4` | GPU type (auto-sets CUDA arch) |
+| `NODES` | `1`, `2` | `2` | 1=dev mode, 2=MPC mode |
+| `CPU_THREADS` | Any integer | `4` | Number of CPU threads |
+
+### Cost Optimization
+
+- Uses spot instances by default (3-6x cheaper)
+- T4 GPUs recommended for best cost/performance
+- Remember to terminate clusters: `sky down <cluster-name>`
+
+See `sky.yaml` for full configuration details.
+

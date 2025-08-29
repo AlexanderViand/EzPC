@@ -1,17 +1,12 @@
-# Build Directory
+# CMake
 build/
-bin/
-mpc_venv
+
+# Python 
+venv
+.mypy_cache
+
 # Vim c_tags files
 c_*
-SEAL
-*.onnx
-.idea/
+
+# IDE
 .vscode/
-*.dat
-*.npy
-*Zone.Identifier
-*.zip
-*.dot
-*.csv
-*.out
