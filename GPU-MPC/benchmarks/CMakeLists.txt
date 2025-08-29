@@ -7,6 +7,7 @@ add_executable(mpc_benchmark
     tasks/dcf_comparison.cu
     tasks/scmp_comparison.cu
     tasks/two_max.cu
+    tasks/lss_ops.cu
     fss_optimization_test.cu
 )
 

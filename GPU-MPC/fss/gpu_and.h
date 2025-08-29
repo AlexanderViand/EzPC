@@ -91,11 +91,12 @@ void gpuAnd(int party, int N, u8 *key_as_bytes, T *d_a, T *d_b, T *d_out, Stats 
     auto d_b1 = (T *)moveToGPU((u8*)key.b1, (N - 1) / PACKING_SIZE + 1, s);
     auto d_b2 = (T *)moveToGPU((u8*)key.b2, (N - 1) / PACKING_SIZE + 1, s);
     
-    // Perform AND operation
-    gpuXor(d_out, d_a, d_b0, N, s);
-    gpuXor(d_out, d_out, d_b, N, s);
-    gpuXor(d_out, d_out, d_b1, N, s);
-    gpuXor(d_out, d_out, d_b2, N, s);
+    // Perform AND operation - copy d_a to d_out first, then XOR in-place
+    checkCudaErrors(cudaMemcpy(d_out, d_a, ((N - 1) / PACKING_SIZE + 1) * sizeof(T), cudaMemcpyDeviceToDevice));
+    gpuXor(d_out, d_b0, N, s);
+    gpuXor(d_out, d_b, N, s);
+    gpuXor(d_out, d_b1, N, s);
+    gpuXor(d_out, d_b2, N, s);
     
     gpuFree(d_b0);
     gpuFree(d_b1);

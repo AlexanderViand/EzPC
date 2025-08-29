@@ -7,6 +7,7 @@ add_library(gpu_mpc_fss
     gpu_aes_table.cu
     gpu_dpf.cu
     gpu_compare_aggregate.cu
+    gpu_lss.cu
     dcf/gpu_dcf_host.cu
     dcf/gpu_relu_host.cu
 )

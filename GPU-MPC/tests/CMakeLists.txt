@@ -11,6 +11,7 @@ add_executable(layernorm fss/layernorm.cu)
 add_executable(silu fss/silu.cu)
 add_executable(rmsnorm fss/rmsnorm.cu)
 add_executable(rotary_embedding fss/rotary_embedding.cu)
+add_executable(lss_test fss/lss_test.cu)
 # secfloat_softmax requires SCI-FloatML which is only built with ORCA
 if(GPU_MPC_BUILD_ORCA)
     add_executable(secfloat_softmax fss/secfloat_softmax.cu)
@@ -35,7 +36,7 @@ set(TEST_LIBS
 
 # Link all FSS tests
 foreach(test_target dpf relu gelu softmax truncate mha layernorm silu rmsnorm 
-                   rotary_embedding piranha_softmax)
+                   rotary_embedding piranha_softmax lss_test)
     target_link_libraries(${test_target} PRIVATE ${TEST_LIBS})
     set_target_properties(${test_target} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 endforeach()
