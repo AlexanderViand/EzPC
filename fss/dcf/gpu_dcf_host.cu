@@ -20,6 +20,7 @@
 // SOFTWARE.
 
 #include "gpu_dcf.cuh"
+#include <cstring>
 
 namespace dcf
 {

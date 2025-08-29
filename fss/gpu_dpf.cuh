@@ -24,6 +24,7 @@
 #include "utils/gpu_data_types.h"
 #include "gpu_aes_shm.cuh"
 #include "gpu_sstab.h"
+#include <cstring>
 
 // using u32 = u32;
 

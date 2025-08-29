@@ -23,6 +23,7 @@
 
 #include "utils/gpu_data_types.h"
 #include "utils/misc_utils.cuh"
+#include <vector>
 
 
 __host__ __device__ inline void printAESBlock(AESBlock *b)

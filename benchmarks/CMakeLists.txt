@@ -4,11 +4,11 @@
 # Due to GPU-MPC's header-only pattern, we compile without separable compilation
 add_executable(mpc_benchmark 
     mpc_benchmark.cu
-    tasks/dcf_comparison.cu
-    tasks/scmp_comparison.cu
+    # Commented out - these tasks depend on sytorch LlamaTransformer
+    # tasks/dcf_comparison.cu
+    # tasks/scmp_comparison.cu
     tasks/two_max.cu
     tasks/lss_ops.cu
-    fss_optimization_test.cu
 )
 
 target_include_directories(mpc_benchmark PRIVATE
@@ -19,7 +19,6 @@ target_include_directories(mpc_benchmark PRIVATE
 target_link_libraries(mpc_benchmark PRIVATE
     gpu_mpc_fss
     gpu_mpc_utils
-    gpu_mpc_nn
     gpu_mpc_external
     gpu_mpc_cuda
 )

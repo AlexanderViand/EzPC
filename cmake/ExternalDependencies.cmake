@@ -33,73 +33,71 @@ if(NOT cutlass_POPULATED)
     )
 endif()
 
-# Sytorch configuration based on build options
-set(BUILD_NETWORKS OFF CACHE BOOL "" FORCE)
-set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(BUILD_ALL_TESTS OFF CACHE BOOL "" FORCE)
 
-if(GPU_MPC_BUILD_ORCA)
-    # These will trigger SEAL build
-    set(SCI_BUILD_FLOAT_ML ON CACHE BOOL "" FORCE)
-    set(SCI_BUILD_LINEAR_HE ON CACHE BOOL "" FORCE)
-else()
-    # Skip SEAL and float libraries
-    set(SCI_BUILD_FLOAT_ML OFF CACHE BOOL "" FORCE)
-    set(SCI_BUILD_LINEAR_HE OFF CACHE BOOL "" FORCE)
-endif()
+# bitpack - Bit packing library
+message(STATUS "Configuring bitpack...")
+file(GLOB BITPACK_SOURCES
+    ${CMAKE_SOURCE_DIR}/ext/bitpack/src/bitpack/*.cpp
+)
+add_library(bitpack STATIC ${BITPACK_SOURCES})
+target_include_directories(bitpack
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/ext/bitpack/include
+)
 
-# Sytorch - Core MPC library
-if(NOT GPU_MPC_USE_SYSTEM_SYTORCH)
-    message(STATUS "Configuring Sytorch...")
-    
-    # Sytorch-GPU is the GPU-enhanced version of Sytorch
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/sytorch/CMakeLists.txt")
-        message(FATAL_ERROR 
-            "Sytorch not found in ext/sytorch/.\n"
-            "This should be part of the GPU-MPC repository.")
-    endif()
-    
-    add_subdirectory(ext/sytorch)
-else()
-    # Use system-installed Sytorch
-    find_package(sytorch REQUIRED)
-endif()
+# cryptoTools - Cryptographic utilities
+message(STATUS "Configuring cryptoTools...")
+file(GLOB CRYPTOTOOLS_SOURCES
+    ${CMAKE_SOURCE_DIR}/ext/cryptoTools/cryptoTools/Common/*.cpp
+    ${CMAKE_SOURCE_DIR}/ext/cryptoTools/cryptoTools/Crypto/*.cpp
+)
+add_library(cryptoTools STATIC ${CRYPTOTOOLS_SOURCES})
+target_include_directories(cryptoTools
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/ext/cryptoTools
+        ${CMAKE_SOURCE_DIR}/ext/cryptoTools/cryptoTools
+)
+target_compile_features(cryptoTools PUBLIC cxx_std_17)
 
-# Create a unified interface library for all external dependencies
+# LLAMA - MPC library
+message(STATUS "Configuring LLAMA...")
+
+# Build LLAMA library from sources
+file(GLOB LLAMA_SOURCES 
+    ${CMAKE_SOURCE_DIR}/ext/llama/src/llama/*.cpp
+)
+
+add_library(llama STATIC ${LLAMA_SOURCES})
+target_include_directories(llama 
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/ext/llama/include
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/ext/llama
+)
+
+# LLAMA needs OpenMP, cryptoTools, bitpack, Eigen and other system libraries
+find_package(OpenMP REQUIRED)
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+target_link_libraries(llama 
+    PUBLIC
+        cryptoTools
+        bitpack
+        Eigen3::Eigen
+        OpenMP::OpenMP_CXX
+        ${CMAKE_DL_LIBS}
+        pthread
+)
+
+# Create combined external dependencies target
 add_library(gpu_mpc_external INTERFACE)
 target_link_libraries(gpu_mpc_external INTERFACE
     cutlass
-    sytorch
-    cryptoTools
-    LLAMA
-    bitpack
-)
-
-# Add SCI float libraries only if Orca is enabled
-if(GPU_MPC_BUILD_ORCA)
-    if(TARGET SCI-FloatML)
-        target_link_libraries(gpu_mpc_external INTERFACE
-            SCI-FloatML
-            SCI-FloatingPoint
-        )
-    endif()
-endif()
-
-# Always link these core SCI libraries
-target_link_libraries(gpu_mpc_external INTERFACE
-    SCI-BuildingBlocks
-    SCI-LinearOT
-    SCI-GC
+    llama
 )
 
 # Status message
 message(STATUS "External dependencies configured:")
 message(STATUS "  CUTLASS: Headers from ${cutlass_SOURCE_DIR}")
-if(GPU_MPC_USE_SYSTEM_SYTORCH)
-    message(STATUS "  Sytorch: System")
-else()
-    message(STATUS "  Sytorch: Built from source")
-endif()
-if(GPU_MPC_BUILD_ORCA)
-    message(STATUS "  SEAL: Will be built with SCI")
-endif()
+message(STATUS "  bitpack: From ${CMAKE_SOURCE_DIR}/ext/bitpack")
+message(STATUS "  cryptoTools: From ${CMAKE_SOURCE_DIR}/ext/cryptoTools")
+message(STATUS "  LLAMA: From ${CMAKE_SOURCE_DIR}/ext/llama")

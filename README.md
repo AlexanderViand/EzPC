@@ -1,8 +1,6 @@
 
 # GPU-MPC
 
-Implementation of protocols from the papers [Orca](https://eprint.iacr.org/2023/206) and [SIGMA](https://eprint.iacr.org/2023/1269).
-
 **Warning**: This is an academic proof-of-concept prototype and has not received careful code review. This implementation is NOT ready for production use.
 
 ## Build
@@ -14,17 +12,10 @@ GPU-MPC requires CMake version >= 3.18 for the modern build system.
 ### Quick Start (10-30 minutes)
 
 ```bash
-# 1. CMake will check system dependencies and tell you what's missing
-cmake --preset test-only
-
-# 2. Install dependencies
 sudo apt update && sudo apt install gcc-9 g++-9 libssl-dev libeigen3-dev libgmp-dev libmpfr-dev libomp-dev
 
-# 3. Install any additional missing packages as reported by CMake
+cmake -S . -B build
 
-# 4. Build (choose one)
-cmake --preset test-only    # Fast: Core tests only (~10 min)
-cmake --preset full         # Full: Everything including Orca (~30 min)
 cmake --build build
 ```
 
@@ -42,8 +33,6 @@ cmake --build build
 ```bash
 cmake -B build \
     -DGPU_MPC_BUILD_TESTS=ON \
-    -DGPU_MPC_BUILD_ORCA=OFF \     # OFF = skip SEAL, save 20 min
-    -DGPU_MPC_BUILD_SIGMA=ON \
     -DCMAKE_CUDA_ARCHITECTURES=86   # Or "native" for current GPU
     
 cmake --build build --parallel
@@ -54,10 +43,7 @@ cmake --build build --parallel
 | Option | Default | Description | Additional Dependencies |
 |--------|---------|-------------|------------------------|
 | `GPU_MPC_BUILD_TESTS` | ON | Build test programs | None |
-| `GPU_MPC_BUILD_ORCA` | OFF | Build Orca training | SEAL, SCI-FloatML (~20 min) |
-| `GPU_MPC_BUILD_SIGMA` | ON | Build SIGMA GPT inference | None |
-| `GPU_MPC_BUILD_PIRANHA` | ON | Build Piranha inference | None |
-| `GPU_MPC_DOWNLOAD_DATA` | OFF | Download CIFAR-10 & setup | Python3, matplotlib |
+
 
 ### Dependencies
 
@@ -68,19 +54,9 @@ The build system automatically manages dependencies:
 - **Sytorch-GPU**: GPU-enhanced MPC framework in `sytorch-gpu/` with cryptoTools, LLAMA, bitpack, SCI
 - **System**: GCC 9+, OpenSSL, Eigen3, OpenMP, GMP, MPFR
 
-#### Component-Specific
-- **Orca only**: SEAL (fetched automatically), SCI float libraries
-- **SIGMA/Test**: No additional dependencies
-
-#### Datasets (Optional)
-- **MNIST & CIFAR-10**: Downloaded to `data/` when `-DGPU_MPC_DOWNLOAD_DATA=ON`
-- **No git submodules required!**
-
 ### Build Performance
-
 The CMake build system is optimized for speed:
 - **CUTLASS**: Headers only, no compilation needed
-- **SEAL**: Only built when Orca is enabled (saves ~20 min)
 - **Parallel fetching**: Dependencies downloaded concurrently
 - **Conditional compilation**: Only builds what you need
 
@@ -122,14 +98,6 @@ The benchmarks save results in both human-readable and JSON formats to `./output
 - `results.json` - Machine-readable JSON with detailed metrics
 - `phase_*.json` - Per-phase timing breakdowns
 
-## Run Orca
-
-Please see the [Orca README](experiments/orca/README.md).
-
-## Run SIGMA
-
-Please see the [SIGMA README](experiments/sigma/README.md)
-
 ## Troubleshooting
 
 ### Missing Dependencies
@@ -140,24 +108,6 @@ Install with:
   sudo apt update
   sudo apt install libssl-dev
 ```
-
-### Slow Compilation
-- Use `cmake --preset single-gpu` to build for your GPU only
-- Limit parallel jobs: `cmake --build build -j 4`
-
-### SEAL/Orca Errors
-- If you don't need Orca: `-DGPU_MPC_BUILD_ORCA=OFF`
-- SEAL takes ~15-20 minutes to build on first run
-
-### IDE Integration
-The CMake build generates `compile_commands.json` for:
-- VS Code (with CMake Tools extension)
-- CLion
-- Vim/Neovim (with clangd LSP)
-
-## Docker Build
-
-**Coming Soon**: Docker support is planned for future releases.
 
 ## Cloud Deployment with SkyPilot
 
@@ -212,4 +162,3 @@ sky exec <cluster-name> sky.yaml --env TASK=dcf
 - Remember to terminate clusters: `sky down <cluster-name>`
 
 See `sky.yaml` for full configuration details.
-
