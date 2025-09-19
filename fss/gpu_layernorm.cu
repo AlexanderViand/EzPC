@@ -32,6 +32,7 @@
 
 #include "gpu_layernorm.cuh"
 #include "gpu_maxpool.cuh"
+#include "utils/gpu_ptr.h"
 
 typedef u64 (*pFunc)(int party, int N, int i, u64 x, u8 *bytes);
 
@@ -42,7 +43,7 @@ T *gpuSum(int bw, int M, int N, T *d_X)
     // auto h_X = (T*) moveToCPU((u8*) d_X, 4 * sizeof(T), NULL);
     // printf("%ld, %ld, %ld, %ld\n", h_X[0], h_X[1], h_X[2], h_X[3]);
     assert(bw <= sizeof(T) * 8);
-    T *d_Y = (T *)gpuMalloc(M * sizeof(T));
+    gpu_ptr<T> d_Y(M);
     // const int kV = 1;
     using TensorReduction = cutlass::reduction::device::TensorReductionAffineContiguous<
         2, 1, T, T, cutlass::plus<T>>;
@@ -51,23 +52,22 @@ T *gpuSum(int bw, int M, int N, T *d_X)
         d_X,
         cutlass::layout::RowMajor::packed({M, N}));
     auto t_Y = cutlass::TensorRef<T, cutlass::layout::RowMajor>(
-        d_Y,
+        d_Y.get(),
         cutlass::layout::RowMajor::packed({M, 1}));
 
     TensorReduction reduction(cutlass::Coord<2>({M, N}));
 
-    uint8_t *workspace = gpuMalloc(reduction.workspace_size());
+    gpu_ptr<uint8_t> workspace(reduction.workspace_size());
     i64 dstStride = 1;
     i64 srcStride = i64(N);
-    cutlass::Status status = reduction.reduce(d_Y, &dstStride, d_X, &srcStride, workspace, T(0));
+    cutlass::Status status = reduction.reduce(d_Y.get(), &dstStride, d_X, &srcStride, workspace.get(), T(0));
     CUTLASS_CHECK(status);
     if (bw < 8 * sizeof(T))
-        modKernel<<<(M - 1) / 128 + 1, 128>>>(M, d_Y, bw);
+        modKernel<<<(M - 1) / 128 + 1, 128>>>(M, d_Y.get(), bw);
     checkCudaErrors(cudaDeviceSynchronize());
-    gpuFree(workspace);
     // auto h_Y = (T*) moveToCPU((u8*) d_Y, 1 * sizeof(T), NULL);
     // printf("%ld\n", h_Y[0]);
-    return d_Y;
+    return d_Y.release();
 }
 
 template <typename T>
@@ -104,10 +104,10 @@ __global__ void applyPointFunc(int party, int bw, int N, T *d_X, T *d_O, u8 *byt
 template <typename T, pFunc p>
 T *pointFunc(int party, int bw, int N, T *d_X, u8 *bytes)
 {
-    T *d_O = (T *)gpuMalloc(N * sizeof(T));
-    applyPointFunc<T, p><<<(N - 1) / 128 + 1, 128>>>(party, bw, N, d_X, d_O, bytes);
+    gpu_ptr<T> d_O(N);
+    applyPointFunc<T, p><<<(N - 1) / 128 + 1, 128>>>(party, bw, N, d_X, d_O.get(), bytes);
     checkCudaErrors(cudaDeviceSynchronize());
-    return d_O;
+    return d_O.release();
 }
 
 template <typename T>

@@ -21,6 +21,7 @@
 
 #include "gpu_relu.cuh"
 #include "utils/gpu_comms.cuh"
+#include "utils/gpu_ptr.h"
 
 namespace dcf
 {
@@ -87,14 +88,14 @@ namespace dcf
                               T *d_I, T *h_oneHot, T *h_outMask, u32 *d_drelu,
                               u32 *d_xLTRin, Stats *s)
     {
-        auto d_out = (T*) gpuMalloc(N * sizeof(T));
-        auto d_oneHot = (T *)moveToGPU((uint8_t *)h_oneHot, 4 * N * sizeof(T), s);
-        auto d_outMask = (T *)moveToGPU((uint8_t *)h_outMask, 2 * N * sizeof(T), s);
-        reluExtendMuxKernel<<<(N - 1) / 128 + 1, 128>>>(party, bin, N, d_I, d_out, d_oneHot, d_outMask, d_drelu, d_xLTRin);
+        gpu_ptr<T> d_out(N);
+        gpu_ptr<T> d_oneHot(4 * N);
+        gpu_ptr<T> d_outMask(2 * N);
+        moveIntoGPUMem((uint8_t*)d_oneHot.get(), (uint8_t *)h_oneHot, 4 * N * sizeof(T), s);
+        moveIntoGPUMem((uint8_t*)d_outMask.get(), (uint8_t *)h_outMask, 2 * N * sizeof(T), s);
+        reluExtendMuxKernel<<<(N - 1) / 128 + 1, 128>>>(party, bin, N, d_I, d_out.get(), d_oneHot.get(), d_outMask.get(), d_drelu, d_xLTRin);
         checkCudaErrors(cudaDeviceSynchronize());
-        gpuFree(d_oneHot);
-        gpuFree(d_outMask);
-        return d_out;
+        return d_out.release();
     }
 
     template <typename T>

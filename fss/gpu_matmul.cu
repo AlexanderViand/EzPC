@@ -35,6 +35,7 @@
 #include "utils/helper_functions.h"
 #include "utils/helper_cuda.h"
 #include "utils/gpu_mem.h"
+#include "utils/gpu_ptr.h"
 #include "utils/gpu_stats.h"
 
 #include "cutlass/gemm/device/gemm.h"
@@ -76,7 +77,7 @@ using GemmCRR = cutlass::gemm::device::Gemm<T,           // Data-type of A matri
 template <typename T>
 T *cutlassMatmul(MatmulParams p, T *d_A, T *d_B, T *d_C, bool cIsBias = false)
 {
-    T *d_D = (T *)gpuMalloc(p.M * p.N * sizeof(T));
+    gpu_ptr<T> d_D(p.M * p.N);
     cutlass::Status status;
     if (p.rowMaj_A && p.rowMaj_B && p.rowMaj_C)
     {
@@ -84,8 +85,8 @@ T *cutlassMatmul(MatmulParams p, T *d_A, T *d_B, T *d_C, bool cIsBias = false)
         typename GemmRRR<T>::Arguments args({p.M, p.N, p.K},                             // Gemm Problem dimensions
                                             {d_A, p.K},                                  // Tensor-ref for source matrix A
                                             {d_B, p.N},                                  // Tensor-ref for source matrix B
-                                            {d_C ? d_C : d_D, d_C && cIsBias ? 0 : p.N}, // Tensor-ref for source matrix C
-                                            {d_D, p.N},                                  // Tensor-ref for destination matrix D (may be different memory than source C matrix)
+                                            {d_C ? d_C : d_D.get(), d_C && cIsBias ? 0 : p.N}, // Tensor-ref for source matrix C
+                                            {d_D.get(), p.N},                                  // Tensor-ref for destination matrix D (may be different memory than source C matrix)
                                             {T(1), d_C ? T(1) : T(0)});                  // Scalars used in the Epilogue
         status = gemm_operator(args);
     }
@@ -95,8 +96,8 @@ T *cutlassMatmul(MatmulParams p, T *d_A, T *d_B, T *d_C, bool cIsBias = false)
         typename GemmRCR<T>::Arguments args({p.M, p.N, p.K},            // Gemm Problem dimensions
                                             {d_A, p.K},                 // Tensor-ref for source matrix A
                                             {d_B, p.K},                 // Tensor-ref for source matrix B
-                                            {d_C ? d_C : d_D, p.N},     // Tensor-ref for source matrix C
-                                            {d_D, p.N},                 // Tensor-ref for destination matrix D (may be different memory than source C matrix)
+                                            {d_C ? d_C : d_D.get(), p.N},     // Tensor-ref for source matrix C
+                                            {d_D.get(), p.N},                 // Tensor-ref for destination matrix D (may be different memory than source C matrix)
                                             {T(1), d_C ? T(1) : T(0)}); // Scalars used in the Epilogue
         status = gemm_operator(args);
     }
@@ -107,8 +108,8 @@ T *cutlassMatmul(MatmulParams p, T *d_A, T *d_B, T *d_C, bool cIsBias = false)
         typename GemmCRR<T>::Arguments args({p.M, p.N, p.K},            // Gemm Problem dimensions
                                             {d_A, p.M},                 // Tensor-ref for source matrix A
                                             {d_B, p.N},                 // Tensor-ref for source matrix B
-                                            {d_C ? d_C : d_D, p.N},     // Tensor-ref for source matrix C
-                                            {d_D, p.N},                 // Tensor-ref for destination matrix D (may be different memory than source C matrix)
+                                            {d_C ? d_C : d_D.get(), p.N},     // Tensor-ref for source matrix C
+                                            {d_D.get(), p.N},                 // Tensor-ref for destination matrix D (may be different memory than source C matrix)
                                             {T(1), d_C ? T(1) : T(0)}); // Scalars used in the Epilogue
         status = gemm_operator(args);
     }
@@ -118,7 +119,7 @@ T *cutlassMatmul(MatmulParams p, T *d_A, T *d_B, T *d_C, bool cIsBias = false)
     }
     CUTLASS_CHECK(status);
     checkCudaErrors(cudaDeviceSynchronize());
-    return d_D;
+    return d_D.release();
 }
 
 template <typename T>
@@ -152,7 +153,7 @@ T *cutlassMatmulWrapper(MatmulParams p, T *d_A, T *d_B, T *d_C, bool cIsBias = f
 template <typename T>
 T *cutlassBatchedMatmul(MatmulParams p, T *d_A, T *d_B, T *d_C, bool cIsBias = false)
 {
-    auto d_D = (T *)gpuMalloc(p.batchSz * p.M * p.N * sizeof(T));
+    gpu_ptr<T> d_D(p.batchSz * p.M * p.N);
     using BatchedGemmRRR = cutlass::gemm::device::GemmBatched<
         T, cutlass::layout::RowMajor,
         T, cutlass::layout::RowMajor,
@@ -173,9 +174,9 @@ T *cutlassBatchedMatmul(MatmulParams p, T *d_A, T *d_B, T *d_C, bool cIsBias = f
                           p.stride_A,
                           {d_B, p.ld_B},
                           p.stride_B,
-                          {d_C ? d_C : d_D, d_C && cIsBias ? 0 : p.ld_C}, //
+                          {d_C ? d_C : d_D.get(), d_C && cIsBias ? 0 : p.ld_C}, //
                           cIsBias ? p.N : p.stride_C,
-                          {d_D, p.ld_C},
+                          {d_D.get(), p.ld_C},
                           p.stride_C,
                           {T(1), d_C ? T(1) : T(0)},
                           p.batchSz});
@@ -190,15 +191,15 @@ T *cutlassBatchedMatmul(MatmulParams p, T *d_A, T *d_B, T *d_C, bool cIsBias = f
                           p.stride_A,
                           {d_B, p.ld_B}, // 786*3
                           p.stride_B,
-                          {d_C ? d_C : d_D, p.ld_C}, //
+                          {d_C ? d_C : d_D.get(), p.ld_C}, //
                           p.stride_C,
-                          {d_D, p.ld_C},
+                          {d_D.get(), p.ld_C},
                           p.stride_C,
                           {T(1), d_C ? T(1) : T(0)},
                           p.batchSz});
     }
     CUTLASS_CHECK(status);
-    return d_D;
+    return d_D.release();
 }
 
 template <typename T>
@@ -239,10 +240,10 @@ T *packLowerTriangularMatrix(MatmulParams p, T *d_A)
 {
     assert(p.M == p.N);
     // printf("Packing matrix=%d\n", p.size_C);
-    auto d_packed_A = (T *)gpuMalloc(p.size_C * sizeof(T));
-    packLowerTriangularKernel<<<(p.size_C - 1) / 128 + 1, 128>>>(p, d_A, d_packed_A);
+    gpu_ptr<T> d_packed_A(p.size_C);
+    packLowerTriangularKernel<<<(p.size_C - 1) / 128 + 1, 128>>>(p, d_A, d_packed_A.get());
     checkCudaErrors(cudaDeviceSynchronize());
-    return d_packed_A;
+    return d_packed_A.release();
 }
 
 template <typename T>
